@@ -66,8 +66,23 @@ export async function validateAuth(
     });
 
     // Check for specific permission if required
-    if (requiredPermission && !permissions.includes(requiredPermission)) {
-      return { error: NextResponse.json({ error: `Missing required permission: ${requiredPermission}` }, { status: 403 }) }
+    if (requiredPermission) {
+      let hasPermission = permissions.includes(requiredPermission);
+      
+      // Self-healing fallback for lead/leads singular vs plural permission mismatches
+      if (!hasPermission) {
+        if (requiredPermission.startsWith('leads.')) {
+          const singular = requiredPermission.replace('leads.', 'lead.');
+          hasPermission = permissions.includes(singular);
+        } else if (requiredPermission.startsWith('lead.')) {
+          const plural = requiredPermission.replace('lead.', 'leads.');
+          hasPermission = permissions.includes(plural);
+        }
+      }
+
+      if (!hasPermission) {
+        return { error: NextResponse.json({ error: `Missing required permission: ${requiredPermission}` }, { status: 403 }) }
+      }
     }
 
     return {
