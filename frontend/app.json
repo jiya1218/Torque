@@ -48,9 +48,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "a1eba2c8-1054-4e2f-b91a-5daa588fef88"
+        "projectId": "727086dc-4268-41cc-bb06-15c69663e95a"
       },
       "router": {}
-    }
+    },
+    "owner": "utkarshmakwana"
   }
 }
