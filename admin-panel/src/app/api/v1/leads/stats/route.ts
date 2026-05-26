@@ -7,44 +7,34 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   try {
-    const [
-      totalLeads,
-      assignedLeads,
-      unassignedLeads,
-      convertedLeads,
-      pendingFollowups,
-      notInterestedLeads,
-      employeeStats
-    ] = await Promise.all([
-      prisma.lead.count(),
-      prisma.lead.count({ where: { assignedTo: { not: null } } }),
-      prisma.lead.count({ where: { assignedTo: null } }),
-      prisma.lead.count({ where: { status: 'Converted' } }),
-      prisma.lead.count({ where: { status: 'Follow-up' } }),
-      prisma.lead.count({ where: { status: 'Not Interested' } }),
-      prisma.user.findMany({
-        where: {
-          role: {
-            name: { notIn: ['ADMIN'] }
+    const totalLeads = await prisma.lead.count()
+    const assignedLeads = await prisma.lead.count({ where: { assignedTo: { not: null } } })
+    const unassignedLeads = await prisma.lead.count({ where: { assignedTo: null } })
+    const convertedLeads = await prisma.lead.count({ where: { status: 'Converted' } })
+    const pendingFollowups = await prisma.lead.count({ where: { status: 'Follow-up' } })
+    const notInterestedLeads = await prisma.lead.count({ where: { status: 'Not Interested' } })
+    const employeeStats = await prisma.user.findMany({
+      where: {
+        role: {
+          name: { notIn: ['ADMIN'] }
+        }
+      },
+      select: {
+        id: true,
+        fullName: true,
+        _count: {
+          select: {
+            assignedLeads: true,
+            calls: true,
           }
         },
-        select: {
-          id: true,
-          fullName: true,
-          _count: {
-            select: {
-              assignedLeads: true,
-              calls: true,
-            }
-          },
-          assignedLeads: {
-            select: {
-              status: true
-            }
+        assignedLeads: {
+          select: {
+            status: true
           }
         }
-      })
-    ])
+      }
+    })
 
     const formattedEmployeeStats = employeeStats.map(emp => {
       const converted = emp.assignedLeads.filter(l => l.status === 'Converted').length

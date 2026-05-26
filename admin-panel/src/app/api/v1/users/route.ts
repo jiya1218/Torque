@@ -4,8 +4,23 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { validateAuth } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
-  const { error, context } = await validateAuth(req, 'users.view')
-  if (error) return error
+  let { error, context } = await validateAuth(req, 'users.view')
+  
+  let isMinimized = false
+  if (error) {
+    // If they don't have users.view, check alternative permissions (e.g. leads page needs to list assignees)
+    const altAuth = await validateAuth(req, 'lead.view')
+    if (altAuth.error) {
+      const altAuth2 = await validateAuth(req, 'crm.view')
+      if (altAuth2.error) {
+        return error // Return the original 403 Forbidden
+      }
+      context = altAuth2.context
+    } else {
+      context = altAuth.context
+    }
+    isMinimized = true
+  }
 
   try {
     const { searchParams } = new URL(req.url)
@@ -20,18 +35,30 @@ export async function GET(req: NextRequest) {
       where.managerId = context.userId
     }
 
+    const selectFields = isMinimized 
+      ? {
+          id: true,
+          fullName: true,
+          role: { select: { id: true, name: true } }
+        }
+      : undefined
+
+    const includeFields = isMinimized
+      ? undefined
+      : {
+          role: { select: { id: true, name: true } },
+          manager: { select: { id: true, fullName: true } },
+          permissions: { select: { id: true, name: true } }
+        }
+
     const users = await prisma.user.findMany({
       where,
       take: limit,
       skip: skip,
       orderBy: { fullName: 'asc' },
-      include: {
-        role: { select: { id: true, name: true } },
-        manager: { select: { id: true, fullName: true } },
-        permissions: { select: { id: true, name: true } }
-      }
+      select: selectFields as any,
+      include: includeFields as any
     })
-
 
     return NextResponse.json(users)
   } catch (error) {
