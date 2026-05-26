@@ -3,7 +3,7 @@
  * Thin fetch wrapper that automatically attaches the Supabase JWT to every request.
  * Always uses the live Vercel backend — localhost is NOT available on mobile.
  */
-import { supabase } from '../lib/supabase';
+  import { supabase } from '../lib/supabase';
 
 const BASE_URL = 'https://toruqfinal-admin-panel.vercel.app';
 
@@ -50,9 +50,9 @@ async function request<T = any>(method: string, path: string, body?: any): Promi
 }
 
 export const api = {
-  get:    <T = any>(path: string)             => request<T>('GET',    path),
-  post:   <T = any>(path: string, body?: any) => request<T>('POST',   path, body),
-  put:    <T = any>(path: string, body?: any) => request<T>('PUT',    path, body),
-  patch:  <T = any>(path: string, body?: any) => request<T>('PATCH',  path, body),
-  delete: <T = any>(path: string)             => request<T>('DELETE', path),
+  get: <T = any>(path: string) => request<T>('GET', path),
+  post: <T = any>(path: string, body?: any) => request<T>('POST', path, body),
+  put: <T = any>(path: string, body?: any) => request<T>('PUT', path, body),
+  patch: <T = any>(path: string, body?: any) => request<T>('PATCH', path, body),
+  delete: <T = any>(path: string) => request<T>('DELETE', path),
 };
