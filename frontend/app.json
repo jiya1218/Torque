@@ -2,7 +2,7 @@
   "expo": {
     "name": "Torque Auto Advisor",
     "slug": "frontend",
-    "version": "1.0.0",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "toque-insurance",
@@ -18,7 +18,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.utkarshmakwana.toque",
-      "versionCode": 1,
+      "versionCode": 9,
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
