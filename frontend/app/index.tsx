@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, SafeAreaView, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';

@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, SafeAreaView, Platform, View } from 'react-native';
+import { StyleSheet, View, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 export default function App() {
   // Use a completely standard Chrome/Android User Agent to avoid session blocking
@@ -10,10 +11,11 @@ export default function App() {
     : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" />
-      <View style={{ flex: 1 }}>
-        <WebView 
+    <SafeAreaProvider>
+      {/* Make status bar translucent=false so it takes its own space */}
+      <StatusBar style="dark" translucent={false} backgroundColor="#ffffff" />
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <WebView
           source={{ uri: 'https://toruqfinal-admin-panel.vercel.app/login' }}
           style={styles.webview}
           userAgent={userAgent}
@@ -36,8 +38,8 @@ export default function App() {
           setSupportMultipleWindows={false}
           javaScriptCanOpenWindowsAutomatically={true}
         />
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -45,6 +47,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+    // Fallback: manually pad top by status bar height on Android
+    paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight ?? 0 : 0,
   },
   webview: {
     flex: 1,
