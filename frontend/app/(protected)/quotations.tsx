@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar, View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
-import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
-import { StatusBar, quotationsService, Quotation } from '../../src/services/quotations';
-import { StatusBar, Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
-import { StatusBar, Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { quotationsService, Quotation } from '../../src/services/quotations';
+import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function QuotationsScreen() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function QuotationsScreen() {
               <View style={styles.cardBottom}>
                 <View><Text style={styles.lbl}>Amount</Text><Text style={styles.val}>₹{Number(item.amount || 0).toLocaleString()}</Text></View>
                 <View><Text style={styles.lbl}>Status</Text><Text style={styles.val}>{item.status}</Text></View>
-                <View><Text style={styles.lbl}>Lead ID</Text><Text style={styles.val}>{item.leadId || item.lead_id ? (item.leadId || item.lead_id).substring(0, 8) + '…' : '—'}</Text></View>
+                <View><Text style={styles.lbl}>Lead ID</Text><Text style={styles.val}>{item.lead_id ? item.lead_id.substring(0, 8) + '…' : '—'}</Text></View>
               </View>
             </View>
           );

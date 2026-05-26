@@ -1,12 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, Pressable, StyleSheet,
-  SafeAreaView, RefreshControl, ActivityIndicator
+  RefreshControl, ActivityIndicator
 } from 'react-native';
-import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
-import { StatusBar, Ionicons } from '@expo/vector-icons';
-import { StatusBar, api } from '../../src/utils/api';
-import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../src/utils/api';
+import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 
 interface Notification {
   id: string;

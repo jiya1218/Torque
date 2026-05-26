@@ -39,21 +39,28 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
-  const modules = [
-    { name: 'Leads',      icon: 'people',           color: '#3b82f6', route: '/(protected)/leads'     },
-    { name: 'Finance',    icon: 'wallet',            color: '#10b981', route: '/(protected)/finance'   },
-    { name: 'CRM',        icon: 'person-add',        color: '#8b5cf6', route: '/(protected)/crm'       },
-    { name: 'Claims',     icon: 'document-text',     color: '#f59e0b', route: '/(protected)/claims'    },
-    { name: 'Visits',     icon: 'location',          color: '#f43f5e', route: '/(protected)/visits'    },
-    { name: 'RTO',        icon: 'car',               color: '#ef4444', route: '/(protected)/rto'       },
-    { name: 'Fitness',    icon: 'fitness',           color: '#06b6d4', route: '/(protected)/fitness'   },
-    { name: 'Quotations', icon: 'clipboard',         color: '#6366f1', route: '/(protected)/quotations'},
-    { name: 'HR',         icon: 'people-circle',     color: '#ec4899', route: '/(protected)/hr'        },
-    { name: 'Loans',      icon: 'cash',              color: '#84cc16', route: '/(protected)/loans'     },
-    { name: 'Users',      icon: 'person',            color: '#14b8a6', route: '/(protected)/users'     },
-    { name: 'Settings',   icon: 'settings',          color: '#94a3b8', route: '/(protected)/settings'  },
-    { name: 'Alerts',     icon: 'notifications',     color: '#f97316', route: '/(protected)/notifications'},
+  const allModules = [
+    { name: 'Leads',      icon: 'people',           color: '#3b82f6', route: '/(protected)/leads',      permission: 'lead.view' },
+    { name: 'Finance',    icon: 'wallet',            color: '#10b981', route: '/(protected)/finance',    permission: 'accounts.view' },
+    { name: 'CRM',        icon: 'person-add',        color: '#8b5cf6', route: '/(protected)/crm',        permission: 'crm.view' },
+    { name: 'Claims',     icon: 'document-text',     color: '#f59e0b', route: '/(protected)/claims',     permission: 'claims.view' },
+    { name: 'Visits',     icon: 'location',          color: '#f43f5e', route: '/(protected)/visits',     permission: 'visit.view' },
+    { name: 'RTO',        icon: 'car',               color: '#ef4444', route: '/(protected)/rto',        permission: 'rto.view' },
+    { name: 'Fitness',    icon: 'fitness',           color: '#06b6d4', route: '/(protected)/fitness',    permission: 'fitness.view' },
+    { name: 'Quotations', icon: 'clipboard',         color: '#6366f1', route: '/(protected)/quotations',  permission: 'quotation.view' },
+    { name: 'HR',         icon: 'people-circle',     color: '#ec4899', route: '/(protected)/hr',         permission: 'hr.view' },
+    { name: 'Loans',      icon: 'cash',              color: '#84cc16', route: '/(protected)/loans',      permission: 'loan.view' },
+    { name: 'Users',      icon: 'person',            color: '#14b8a6', route: '/(protected)/users',      permission: 'users.view' },
+    { name: 'Settings',   icon: 'settings',          color: '#94a3b8', route: '/(protected)/settings' },
+    { name: 'Alerts',     icon: 'notifications',     color: '#f97316', route: '/(protected)/notifications' },
   ];
+
+  const modules = allModules.filter(m => {
+    if (!m.permission) return true;
+    const roleUpper = user?.role?.toUpperCase();
+    if (roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN') return true;
+    return user?.permissions?.includes(m.permission);
+  });
 
   return (
     // edges={['top']} — footer handles bottom safe area itself

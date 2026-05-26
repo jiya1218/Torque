@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       data: {
         clientName: body.clientName || body.client_name,
         clientEmail: body.clientEmail || body.client_email,
-        clientPhone: String(body.clientPhone || body.client_phone),
+        clientPhone: (body.clientPhone || body.client_phone) ? String(body.clientPhone || body.client_phone) : undefined,
         vehicleNo: body.vehicleNo || body.vehicle_no,
         status: body.status || 'New',
         assignedTo: body.assignedTo || body.assigned_to

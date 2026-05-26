@@ -57,9 +57,7 @@ export default function NewLeadScreen() {
           <Ionicons name="close" size={24} color={Colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>New Lead</Text>
-        <Pressable testID="save-lead-btn" onPress={submit} disabled={loading} style={[styles.saveBtn, loading && styles.saveBtnDisabled]}>
-          <Text style={styles.saveBtnText}>{loading ? 'Saving...' : 'Save'}</Text>
-        </Pressable>
+        <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -154,8 +152,17 @@ export default function NewLeadScreen() {
             numberOfLines={3}
           />
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 20 }} />
         </ScrollView>
+
+        <View style={styles.stickyFooter}>
+          <Pressable style={styles.cancelBtn} onPress={() => router.back()}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </Pressable>
+          <Pressable style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={submit} disabled={loading}>
+            <Text style={styles.submitBtnText}>{loading ? 'Saving...' : 'Save Lead'}</Text>
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -219,4 +226,48 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, textTransform: 'capitalize' },
   chipTextActive: { color: Colors.white },
+  stickyFooter: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  submitBtn: {
+    flex: 2,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitBtnDisabled: {
+    opacity: 0.6,
+  },
+  submitBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.white,
+  },
 });

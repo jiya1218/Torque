@@ -1,28 +1,49 @@
 import React, { useState, useCallback } from 'react';
-import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar, View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
-import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
-import { StatusBar, api } from '../../src/utils/api';
-import { StatusBar, Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
-import { StatusBar, Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { api } from '../../src/utils/api';
+import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function HRScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
+  const roleUpper = user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN';
+
   const load = useCallback(async () => {
+    if (!isAdmin) return;
     try {
       const data = await api.get<any[]>('/users/');
       const arr = Array.isArray(data) ? data : (data as any).items || [];
       setItems(arr);
       setTotal(arr.length);
     } catch {}
-  }, []);
+  }, [isAdmin]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.header}>
+          <Pressable testID="back-btn" onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={Colors.text} /></Pressable>
+          <Text style={styles.title}>Access Denied</Text>
+        </View>
+        <View style={styles.empty}>
+          <Ionicons name="lock-closed" size={48} color={Colors.error} />
+          <Text style={styles.emptyText}>You do not have permission to view this screen.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

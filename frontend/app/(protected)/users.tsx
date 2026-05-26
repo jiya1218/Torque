@@ -1,21 +1,27 @@
 import React, { useState, useCallback } from 'react';
-import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar, View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl } from 'react-native';
-import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
-import { StatusBar, usersService, User } from '../../src/services/users';
-import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
-import { StatusBar, Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { usersService, User } from '../../src/services/users';
+import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/context/AuthContext';
 
 const ALL_ROLES = ['super_admin','admin','manager','branch_manager','regional_manager','sales_executive','telecaller','field_executive','rto_executive','claims_executive','loan_executive','crm_executive','accountant','hr','auditor','data_entry','support','it_admin','viewer'];
 
 export default function UsersScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  const roleUpper = user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN';
+
   const load = useCallback(async () => {
+    if (!isAdmin) return;
     try {
       const data = await usersService.list({ limit: 100 });
       // Client-side search filter until backend supports search param
@@ -30,10 +36,25 @@ export default function UsersScreen() {
     } catch (e) {
       console.error('[UsersScreen] Failed to load users', e);
     }
-  }, [search]);
+  }, [search, isAdmin]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.header}>
+          <Pressable testID="back-btn" onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={Colors.text} /></Pressable>
+          <Text style={styles.title}>Access Denied</Text>
+        </View>
+        <View style={styles.empty}>
+          <Ionicons name="lock-closed" size={48} color={Colors.error} />
+          <Text style={styles.emptyText}>You do not have permission to view this screen.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

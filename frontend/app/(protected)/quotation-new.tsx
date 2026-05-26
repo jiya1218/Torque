@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar, View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { StatusBar, useRouter } from 'expo-router';
-import { StatusBar, api } from '../../src/utils/api';
-import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
-import { StatusBar, Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { api } from '../../src/utils/api';
+import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function QuotationNewScreen() {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function QuotationNewScreen() {
       <View style={styles.header}>
         <Pressable testID="back-btn" onPress={() => router.back()} style={styles.backBtn}><Ionicons name="close" size={24} color={Colors.text} /></Pressable>
         <Text style={styles.headerTitle}>New Quotation</Text>
-        <Pressable testID="save-quotation-btn" onPress={submit} disabled={loading} style={styles.saveBtn}><Text style={styles.saveBtnText}>{loading ? 'Saving...' : 'Save'}</Text></Pressable>
+        <View style={{ width: 40 }} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -77,8 +77,16 @@ export default function QuotationNewScreen() {
           </View>
           <Text style={styles.label}>COVERAGE DETAILS</Text>
           <TextInput style={[styles.input, styles.textArea]} placeholder="Coverage details..." placeholderTextColor={Colors.textLight} value={form.coverage_details} onChangeText={v => update('coverage_details', v)} multiline numberOfLines={3} />
-          <View style={{ height: 40 }} />
+          <View style={{ height: 20 }} />
         </ScrollView>
+        <View style={styles.stickyFooter}>
+          <Pressable style={styles.cancelBtn} onPress={() => router.back()}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </Pressable>
+          <Pressable style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={submit} disabled={loading}>
+            <Text style={styles.submitBtnText}>{loading ? 'Saving...' : 'Save Quotation'}</Text>
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -101,4 +109,48 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, textTransform: 'capitalize' },
   chipTextActive: { color: Colors.white },
+  stickyFooter: {
+    flexDirection: 'row',
+    padding: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  submitBtn: {
+    flex: 2,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitBtnDisabled: {
+    opacity: 0.6,
+  },
+  submitBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.white,
+  },
 });
