@@ -4,13 +4,13 @@ import prisma from '@/lib/prisma'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { error } = await validateAuth(req)
   if (error) return error
 
   try {
-    const id = params.id
+    const { id } = await params
     const body = await req.json().catch(() => ({}))
     const status = body.status || 'completed'
 
