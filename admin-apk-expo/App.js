@@ -14,7 +14,7 @@ export default function App() {
       <StatusBar style="dark" />
       <View style={{ flex: 1 }}>
         <WebView 
-          source={{ uri: 'https://insurance-toque-admin-panel.vercel.app/login' }}
+          source={{ uri: 'https://toruqfinal-admin-panel.vercel.app/login' }}
           style={styles.webview}
           userAgent={userAgent}
           // ESSENTIAL FOR SESSIONS

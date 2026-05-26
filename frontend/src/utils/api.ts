@@ -5,7 +5,7 @@
  */
 import { supabase } from '../lib/supabase';
 
-const BASE_URL = 'https://insurance-toque-admin-panel.vercel.app';
+const BASE_URL = 'https://toruqfinal-admin-panel.vercel.app';
 
 async function getToken(): Promise<string | null> {
   try {
