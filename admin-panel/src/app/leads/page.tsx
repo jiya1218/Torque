@@ -13,19 +13,19 @@ const WHATSAPP_TEMPLATES = [
   {
     id: 'renewal',
     name: 'Standard Renewal Notice',
-    text: (name: string, vehicle: string, expiry: string) => 
-      `Hi ${name},\n\nThis is a renewal reminder from *Torque Auto Advisor* regarding your vehicle *${vehicle}*. Your policy is scheduled to expire on *${expiry}*.\n\nPlease share your current policy copy so we can calculate the best quotes for you!\n\nBest regards,\nTorque Team`
+    text: (name: string, vehicle: string, expiry?: string) => 
+      `Hi ${name},\n\nThis is a renewal reminder from *Torque Auto Advisor* regarding your vehicle *${vehicle}*. Your policy is scheduled to expire on *${expiry || 'N/A'}*.\n\nPlease share your current policy copy so we can calculate the best quotes for you!\n\nBest regards,\nTorque Team`
   },
   {
     id: 'callback',
     name: 'Out of Reach / Callback Request',
-    text: (name: string, vehicle: string) => 
+    text: (name: string, vehicle: string, expiry?: string) => 
       `Hi ${name},\n\nWe tried calling you regarding your vehicle *${vehicle}* renewal copy but couldn't get in touch. \n\nPlease let us know a suitable time to call you back, or share your details here!\n\nThanks,\nTorque Team`
   },
   {
     id: 'docs',
     name: 'Document Collection Request',
-    text: (name: string, vehicle: string) => 
+    text: (name: string, vehicle: string, expiry?: string) => 
       `Hi ${name},\n\nRegarding your auto insurance quote for vehicle *${vehicle}*, could you please share a photo/PDF of your:\n1. Previous Insurance Policy\n2. RC Book (Front & Back)\n\nThis will help us apply all applicable discounts (No Claim Bonus, etc.) for your new quote.\n\nThank you!`
   }
 ]
