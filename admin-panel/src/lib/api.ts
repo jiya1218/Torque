@@ -29,7 +29,11 @@ export async function fetchApi(path: string, options: RequestInit = {}, retries 
           })
         }
 
-        throw new Error(error.error || `HTTP error! status: ${res.status}`)
+        const errorMsg = error.details 
+          ? `${error.error} (${error.details})` 
+          : (error.error || `HTTP error! status: ${res.status}`);
+
+        throw new Error(errorMsg)
       }
 
       return res.json()
