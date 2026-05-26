@@ -1,15 +1,30 @@
 import { PrismaClient } from '@prisma/client'
 
-const prismaClientSingleton = () => {
-  return new PrismaClient()
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Prisma Singleton for Vercel Serverless Functions
+// ─────────────────────────────────────────────────────────────────────────────
+// In production (Vercel), each serverless invocation runs in an isolated
+// module context. We attach the client to `globalThis` so that warm
+// Lambda containers reuse the same connection instead of opening a new one
+// on every request (which exhausts the PgBouncer pool).
+// ─────────────────────────────────────────────────────────────────────────────
 
 declare global {
-  var prisma: undefined | ReturnType<typeof prismaClientSingleton>
+  // eslint-disable-next-line no-var
+  var _prisma: PrismaClient | undefined
 }
 
-const prisma = globalThis.prisma ?? prismaClientSingleton()
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+  })
+}
+
+// ✅ Always cache on globalThis – both in dev and production
+const prisma = globalThis._prisma ?? createPrismaClient()
+
+if (!globalThis._prisma) {
+  globalThis._prisma = prisma
+}
 
 export default prisma
-
-if (process.env.NODE_ENV !== 'production') globalThis.prisma = prisma
