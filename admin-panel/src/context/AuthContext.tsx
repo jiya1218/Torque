@@ -60,11 +60,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
       } else {
         const errorData = await response.json().catch(() => ({}))
+        
+        // Handle invalid/expired tokens (401) or missing user profiles (404)
+        if (response.status === 401 || response.status === 404) {
+          console.error(`[auth-me] Authentication failed (${response.status}). Signing out...`, errorData)
+          setUser(null)
+          setToken(null)
+          setIsLoading(false)
+          try {
+            await supabase.auth.signOut()
+          } catch (err) {
+            console.error('[auth-me] Failed to clear Supabase session:', err)
+          }
+          return
+        }
+
         if (response.status !== 403) {
           console.error('[auth-me] API Error:', response.status, errorData)
         }
         
-        // FALLBACK: If API fails, use basic session info
+        // FALLBACK: If API fails for other reasons, use basic session info
         setUser({
           id: session.user.id,
           email: session.user.email,

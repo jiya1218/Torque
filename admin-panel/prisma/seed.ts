@@ -39,7 +39,9 @@ const PERMISSIONS = [
   // 17. Templates (WhatsApp/SMS) (4)
   "template.view", "template.create", "template.edit", "template.delete",
   // 18. Admin Panel / System Config (2)
-  "system.settings_manage", "system.audit_logs_view"
+  "system.settings_manage", "system.audit_logs_view",
+  // 19. Missing Application Permissions (6)
+  "users.view", "users.create", "users.edit", "users.delete", "quotations.approve", "settings.manage"
 ]
 
 const ROLES = [
@@ -93,6 +95,7 @@ async function main() {
       "notification.view", "notification.send",
       "data.view", "data.create", "data.manage_documents",
       "template.view",
+      "users.view", "users.create", "users.edit"
     ],
 
     "Sales Executive": [
@@ -162,6 +165,7 @@ async function main() {
       "dashboard.view_manager",
       "accounts.manage_salary",
       "notification.view",
+      "users.view", "users.create", "users.edit", "users.delete"
     ],
 
     "Viewer": [

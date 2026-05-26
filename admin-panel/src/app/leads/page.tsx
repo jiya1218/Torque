@@ -67,6 +67,15 @@ export default function LeadsPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('renewal')
   const [copiedText, setCopiedText] = useState(false)
 
+  // Follow-up Modal State
+  const [showFollowupModal, setShowFollowupModal] = useState(false)
+  const [followupData, setFollowupData] = useState({
+    scheduled_at: '',
+    type: 'call',
+    notes: ''
+  })
+  const [isScheduling, setIsScheduling] = useState(false)
+
   useEffect(() => {
     fetchData()
   }, [startDate, endDate])
@@ -131,6 +140,25 @@ export default function LeadsPage() {
 
   const handleUpdateLeadStatus = async (newStatus: string) => {
     if (!detailedLead) return
+    
+    if (newStatus === 'Follow Up') {
+      // Set default date to tomorrow at 10:00 AM
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      tomorrow.setHours(10, 0, 0, 0)
+      const localString = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16)
+        
+      setFollowupData({
+        scheduled_at: localString,
+        type: 'call',
+        notes: ''
+      })
+      setShowFollowupModal(true)
+      return
+    }
+
     try {
       const updated = await fetchApi(`/api/v1/leads/${detailedLead.id}`, {
         method: 'PUT',
@@ -140,6 +168,42 @@ export default function LeadsPage() {
       fetchData()
     } catch (error) {
       alert('Failed to update lead status')
+    }
+  }
+
+  const handleScheduleFollowup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!detailedLead) return
+    setIsScheduling(true)
+    try {
+      // 1. Create Follow-up in DB
+      await fetchApi('/api/v1/follow-ups', {
+        method: 'POST',
+        body: JSON.stringify({
+          lead_id: detailedLead.id,
+          assigned_to: detailedLead.assignedTo || null,
+          lead_name: detailedLead.clientName,
+          type: followupData.type,
+          scheduled_at: new Date(followupData.scheduled_at).toISOString(),
+          notes: followupData.notes
+        })
+      })
+
+      // 2. Update Lead Status in DB to 'Follow Up'
+      const updated = await fetchApi(`/api/v1/leads/${detailedLead.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'Follow Up' })
+      })
+      setDetailedLead({ ...detailedLead, status: updated.status })
+      
+      // 3. Reset and Close Modal
+      setShowFollowupModal(false)
+      fetchData()
+      alert('Follow-up scheduled successfully!')
+    } catch (error: any) {
+      alert(error.message || 'Failed to schedule follow-up')
+    } finally {
+      setIsScheduling(false)
     }
   }
 
@@ -713,7 +777,7 @@ export default function LeadsPage() {
             <form onSubmit={handleAddLead} className="space-y-4">
               <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Owner Name *</label>
-                <input required type="text" className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none" value={newLead.clientName} onChange={e => setNewLead({...newLead, clientName: e.target.value})} placeholder="e.g. John Doe" />
+                <input required type="text" className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none" value={newLead.clientName} onChange={e => setNewLead({...newLead, clientName: e.target.value})} placeholder="e.g. Rahul Sharma" />
               </div>
               <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Phone Number *</label>
@@ -725,12 +789,90 @@ export default function LeadsPage() {
               </div>
               <div>
                 <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email (Optional)</label>
-                <input type="email" className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none" value={newLead.clientEmail} onChange={e => setNewLead({...newLead, clientEmail: e.target.value})} placeholder="e.g. john@gmail.com" />
+                <input type="email" className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none" value={newLead.clientEmail} onChange={e => setNewLead({...newLead, clientEmail: e.target.value})} placeholder="e.g. rahul@gmail.com" />
               </div>
               <div className="flex gap-3 mt-8">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold">Cancel</button>
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold font-sans">Cancel</button>
                 <button disabled={isSubmitting} type="submit" className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-lg">
                   {isSubmitting ? 'Saving...' : 'Save Lead'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Follow-up Modal */}
+      {showFollowupModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 font-sans">
+          <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Schedule Follow-up</h2>
+                <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">Lead: {detailedLead?.clientName}</p>
+              </div>
+              <button 
+                onClick={() => setShowFollowupModal(false)} 
+                className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleScheduleFollowup} className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Scheduled Date & Time *</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    required 
+                    type="datetime-local" 
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 pl-10 text-xs outline-none focus:ring-2 focus:ring-slate-100" 
+                    value={followupData.scheduled_at} 
+                    onChange={e => setFollowupData({...followupData, scheduled_at: e.target.value})} 
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Contact Channel *</label>
+                <select 
+                  required 
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100 font-bold text-slate-700"
+                  value={followupData.type} 
+                  onChange={e => setFollowupData({...followupData, type: e.target.value})}
+                >
+                  <option value="call">📞 Phone Call</option>
+                  <option value="whatsapp">💬 WhatsApp Message</option>
+                  <option value="visit">🏠 Customer Site Visit</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Follow-up Notes / Instructions</label>
+                <textarea 
+                  placeholder="What is the context of this callback? (e.g. 'Customer asked to call back after 4 PM regarding commercial vehicle premium copy.')" 
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none resize-none" 
+                  rows={3}
+                  value={followupData.notes} 
+                  onChange={e => setFollowupData({...followupData, notes: e.target.value})} 
+                />
+              </div>
+              
+              <div className="flex gap-3 mt-8">
+                <button 
+                  type="button" 
+                  onClick={() => setShowFollowupModal(false)} 
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={isScheduling} 
+                  type="submit" 
+                  className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold shadow-lg hover:bg-black transition-all"
+                >
+                  {isScheduling ? 'Scheduling...' : 'Confirm Schedule'}
                 </button>
               </div>
             </form>

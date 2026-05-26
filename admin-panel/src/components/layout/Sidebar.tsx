@@ -58,11 +58,12 @@ export default function Sidebar() {
   useEffect(() => { setOpen(false) }, [pathname])
 
   const role = (user?.role?.name || 'EXECUTIVE').toUpperCase()
+  const isExecutive = role.endsWith('EXECUTIVE') || role === 'TELECALLER' || role === 'VIEWER'
 
   const filteredGroups = MENU_GROUPS.map(group => {
     let items = group.items
 
-    if (role === 'EXECUTIVE') {
+    if (isExecutive) {
       // Hide most admin and oversight items for Executives
       if (group.label === 'MANAGEMENT') return null
       if (group.label === 'OPERATIONS') {

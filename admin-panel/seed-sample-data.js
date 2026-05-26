@@ -2,9 +2,15 @@ const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
 async function main() {
-  // Get the admin user to assign records
-  const admin = await prisma.user.findUnique({ where: { email: 'jiya.scalezix@gmail.com' } })
-  if (!admin) { console.error('Admin user not found!'); return }
+  // Get the admin user to assign records (check new superadmin first)
+  let admin = await prisma.user.findUnique({ where: { email: 'superadmin@torque.in' } })
+  if (!admin) {
+    admin = await prisma.user.findUnique({ where: { email: 'jiya.scalezix@gmail.com' } })
+  }
+  if (!admin) {
+    admin = await prisma.user.findFirst()
+  }
+  if (!admin) { console.error('No users found in database to assign sample data!'); return }
   const uid = admin.id
 
   console.log('Seeding sample data (idempotent)...')

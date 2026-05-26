@@ -3,8 +3,12 @@ import React, { useState, useEffect } from 'react'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { fetchApi } from '@/lib/api'
 import { Plus, Search, Mail, Phone, MapPin, Shield, Activity, DollarSign, UserCheck, UserMinus, X, Lock } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { useRouter } from 'next/navigation'
 
 export default function HRPage() {
+  const { user, permissions } = useAuth()
+  const router = useRouter()
   const [employees, setEmployees] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -18,10 +22,22 @@ export default function HRPage() {
     joiningDate: new Date().toISOString().split('T')[0]
   })
 
+  const hasAccess = permissions.includes('users.view')
+
   useEffect(() => {
-    fetchData()
-    fetchRoles()
-  }, [])
+    if (!hasAccess && user) {
+      router.push('/')
+    }
+  }, [hasAccess, user, router])
+
+  useEffect(() => {
+    if (hasAccess) {
+      fetchData()
+      fetchRoles()
+    }
+  }, [hasAccess])
+
+  if (!hasAccess) return null
 
   const fetchData = async () => {
     setLoading(true)
@@ -168,12 +184,12 @@ export default function HRPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
                 <input required value={newEmployee.fullName} onChange={e => setNewEmployee({...newEmployee, fullName: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="John Doe" />
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="Rajesh Kumar" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email Address</label>
                 <input required type="email" value={newEmployee.email} onChange={e => setNewEmployee({...newEmployee, email: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="john@example.com" />
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none" placeholder="rajesh@example.com" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Temporary Password</label>

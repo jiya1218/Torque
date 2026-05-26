@@ -69,13 +69,19 @@ export async function validateAuth(
     if (requiredPermission) {
       let hasPermission = permissions.includes(requiredPermission);
       
-      // Self-healing fallback for lead/leads singular vs plural permission mismatches
+      // Self-healing fallback for lead/leads and quotation/quotations singular vs plural mismatches
       if (!hasPermission) {
         if (requiredPermission.startsWith('leads.')) {
           const singular = requiredPermission.replace('leads.', 'lead.');
           hasPermission = permissions.includes(singular);
         } else if (requiredPermission.startsWith('lead.')) {
           const plural = requiredPermission.replace('lead.', 'leads.');
+          hasPermission = permissions.includes(plural);
+        } else if (requiredPermission.startsWith('quotations.')) {
+          const singular = requiredPermission.replace('quotations.', 'quotation.');
+          hasPermission = permissions.includes(singular);
+        } else if (requiredPermission.startsWith('quotation.')) {
+          const plural = requiredPermission.replace('quotation.', 'quotations.');
           hasPermission = permissions.includes(plural);
         }
       }

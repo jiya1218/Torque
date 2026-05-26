@@ -5,11 +5,11 @@
  */
 
 const mockLeads = [
-  { "Vehicle No": "GJ01AB1234", "Owner Name": "John Doe", "Contact Number": "9876543210", "Insurance Expiry Date": "2024-05-01" },
-  { "Vehicle No": "GJ01CD5678", "Owner Name": "Jane Smith", "Contact Number": "9876543211", "Insurance Expiry Date": "2024-05-10" },
-  { "Vehicle No": "GJ01EF9012", "Owner Name": "Bob Wilson", "Contact Number": "9876543212", "Insurance Expiry Date": "2024-05-15" },
-  { "Vehicle No": "GJ01GH3456", "Owner Name": "Alice Brown", "Contact Number": "9876543213", "Insurance Expiry Date": "2024-05-20" },
-  { "Vehicle No": "GJ01IJ7890", "Owner Name": "Charlie Green", "Contact Number": "9876543214", "Insurance Expiry Date": "2024-05-25" }
+  { "Vehicle No": "GJ01AB1234", "Owner Name": "Rajesh Kumar", "Contact Number": "9876543210", "Insurance Expiry Date": "2024-05-01" },
+  { "Vehicle No": "GJ01CD5678", "Owner Name": "Priya Sharma", "Contact Number": "9876543211", "Insurance Expiry Date": "2024-05-10" },
+  { "Vehicle No": "GJ01EF9012", "Owner Name": "Amit Patel", "Contact Number": "9876543212", "Insurance Expiry Date": "2024-05-15" },
+  { "Vehicle No": "GJ01GH3456", "Owner Name": "Sunita Verma", "Contact Number": "9876543213", "Insurance Expiry Date": "2024-05-20" },
+  { "Vehicle No": "GJ01IJ7890", "Owner Name": "Deepak Mehta", "Contact Number": "9876543214", "Insurance Expiry Date": "2024-05-25" }
 ];
 
 const mockEmployees = [
