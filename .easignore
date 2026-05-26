@@ -1,10 +1,40 @@
-node_modules/
+# EAS Build ignore — exclude all non-frontend workspace content
+# This reduces the 171 MB+ archive to just the frontend source files
+
+# Other workspace packages (not needed for mobile build)
 admin-panel/
-.next/
-.expo/
-.vscode/
-.idea/
-build/
-dist/
+admin-apk-expo/
+admin-apk/
+api_temp/
+
+# Large files not needed for build
+node_modules/
+torque all details/
+*.md
+*.sql
 *.log
-.env*.local
+*.map
+*.lock
+package-lock.json
+
+# Git history
+.git/
+
+# Build artifacts & caches
+dist/
+build/
+.cache/
+.next/
+coverage/
+.expo/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
