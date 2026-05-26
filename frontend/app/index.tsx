@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,10 +47,11 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Ionicons name="shield-checkmark" size={48} color={Colors.primary} />
-          </View>
-          <Text style={styles.title}>Torque Auto Advisor</Text>
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logoImage} 
+            resizeMode="contain"
+          />
           <Text style={styles.subtitle}>Complete Insurance Management</Text>
         </View>
 
@@ -115,10 +116,9 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   container: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.xxl },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  header: { alignItems: 'center', marginBottom: 40 },
-  logoContainer: { width: 80, height: 80, borderRadius: BorderRadius.lg, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg },
-  title: { fontSize: FontSize.hero, fontWeight: '900', color: Colors.text, letterSpacing: -1 },
-  subtitle: { fontSize: FontSize.md, color: Colors.textMuted, marginTop: Spacing.xs },
+  header: { alignItems: 'center', marginBottom: 30 },
+  logoImage: { width: 240, height: 85, marginBottom: Spacing.xs },
+  subtitle: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: Spacing.xs, fontWeight: '600', letterSpacing: 0.5 },
   form: { gap: Spacing.sm },
   label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginTop: Spacing.md },
   inputContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, backgroundColor: Colors.surface, height: 52 },
