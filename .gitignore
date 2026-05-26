@@ -88,3 +88,10 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Metro bundler cache (huge — never needed in git)
+frontend/.metro-cache/
+**/.metro-cache/
+
+# Large data/spreadsheet folders
+torque all details/
