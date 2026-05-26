@@ -1,6 +1,7 @@
 import { validateAuth } from '@/lib/auth-guard'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function GET(
   req: NextRequest,
