@@ -1,8 +1,7 @@
 {
   "cli": {
     "version": ">= 18.7.0",
-    "appVersionSource": "remote",
-    "promptToConfigurePushToInstall": false
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -13,16 +12,10 @@
       "android": {
         "buildType": "apk"
       },
-      "distribution": "internal",
-      "config": {
-        "projectRoot": "frontend"
-      }
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "config": {
-        "projectRoot": "frontend"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
