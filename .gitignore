@@ -95,3 +95,7 @@ frontend/.metro-cache/
 
 # Large data/spreadsheet folders
 torque all details/
+
+# One-off admin scripts — never commit these
+scratch/
+**/scratch/
