@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { useApi } from '@/hooks/useApi'
+import { useRouter } from 'next/navigation'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 import {
@@ -30,6 +31,7 @@ const DB_LEAD_FIELDS: ColumnMapping[] = [
 
 export default function LeadImportPage() {
   const apiFetch = useApi()
+  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   // States
