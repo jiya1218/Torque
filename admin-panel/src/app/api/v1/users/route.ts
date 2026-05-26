@@ -32,33 +32,31 @@ export async function GET(req: NextRequest) {
     
     // If user is a manager, only show their team
     if (isManager) {
-      where.managerId = context.userId
+      where.managerId = context!.userId
     }
 
-    const selectFields = isMinimized 
-      ? {
-          id: true,
-          fullName: true,
-          role: { select: { id: true, name: true } }
-        }
-      : undefined
-
-    const includeFields = isMinimized
-      ? undefined
-      : {
-          role: { select: { id: true, name: true } },
-          manager: { select: { id: true, fullName: true } },
-          permissions: { select: { id: true, name: true } }
-        }
-
-    const users = await prisma.user.findMany({
+    const queryArgs: any = {
       where,
       take: limit,
       skip: skip,
-      orderBy: { fullName: 'asc' },
-      select: selectFields as any,
-      include: includeFields as any
-    })
+      orderBy: { fullName: 'asc' }
+    }
+
+    if (isMinimized) {
+      queryArgs.select = {
+        id: true,
+        fullName: true,
+        role: { select: { id: true, name: true } }
+      }
+    } else {
+      queryArgs.include = {
+        role: { select: { id: true, name: true } },
+        manager: { select: { id: true, fullName: true } },
+        permissions: { select: { id: true, name: true } }
+      }
+    }
+
+    const users = await prisma.user.findMany(queryArgs)
 
     return NextResponse.json(users)
   } catch (error) {
