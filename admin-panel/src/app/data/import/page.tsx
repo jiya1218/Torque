@@ -77,7 +77,7 @@ export default function LeadImportPage() {
       skipEmptyLines: true,
       complete: (results) => {
         if (results.data.length > 0) {
-          const sheetHeaders = Object.keys(results.data[0])
+          const sheetHeaders = Object.keys(results.data[0] as object)
           setHeaders(sheetHeaders)
           setParsedRows(results.data)
           setMappings(autoDetectMappings(sheetHeaders))
