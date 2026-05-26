@@ -1,6 +1,7 @@
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
+import AppFooter from '../../src/components/AppFooter';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
@@ -38,7 +39,8 @@ export default function SettingsScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
         <Pressable testID="back-btn" onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -126,6 +128,7 @@ export default function SettingsScreen() {
         </Pressable>
         <View style={{ height: 40 }} />
       </ScrollView>
+      <AppFooter active="settings" />
     </SafeAreaView>
   );
 }

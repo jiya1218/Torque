@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { api } from '../../src/utils/api';
-import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar, View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
+import { StatusBar, api } from '../../src/utils/api';
+import { StatusBar, Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
+import { StatusBar, Ionicons } from '@expo/vector-icons';
 
 export default function RTOScreen() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function RTOScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Pressable testID="back-btn" onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={Colors.text} /></Pressable>
         <Text style={styles.title}>RTO Work</Text>

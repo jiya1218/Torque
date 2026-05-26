@@ -60,7 +60,7 @@ export default function LeadDetailScreen() {
   const sc = StatusColors[lead.status] || StatusColors.new;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.headerBar}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />

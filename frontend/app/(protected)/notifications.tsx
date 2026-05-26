@@ -3,10 +3,10 @@ import {
   View, Text, FlatList, Pressable, StyleSheet,
   SafeAreaView, RefreshControl, ActivityIndicator
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../src/utils/api';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
+import { StatusBar, Ionicons } from '@expo/vector-icons';
+import { StatusBar, api } from '../../src/utils/api';
+import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 
 interface Notification {
   id: string;
@@ -79,7 +79,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />

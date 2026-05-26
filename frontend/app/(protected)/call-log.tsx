@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, TextInput, Pressable, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { api } from '../../src/utils/api';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar, useState, useEffect } from 'react';
+import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar, View, Text, TextInput, Pressable, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { StatusBar, useRouter, useLocalSearchParams } from 'expo-router';
+import { StatusBar, api } from '../../src/utils/api';
+import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { StatusBar, Ionicons } from '@expo/vector-icons';
 
 interface PredefinedResponse {
   id: string;
@@ -84,7 +84,7 @@ export default function CallLogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="close" size={24} color={Colors.text} />

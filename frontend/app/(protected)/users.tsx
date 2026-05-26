@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { usersService, User } from '../../src/services/users';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar, View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl } from 'react-native';
+import { StatusBar, useRouter, useFocusEffect } from 'expo-router';
+import { StatusBar, usersService, User } from '../../src/services/users';
+import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { StatusBar, Ionicons } from '@expo/vector-icons';
 
 const ALL_ROLES = ['super_admin','admin','manager','branch_manager','regional_manager','sales_executive','telecaller','field_executive','rto_executive','claims_executive','loan_executive','crm_executive','accountant','hr','auditor','data_entry','support','it_admin','viewer'];
 
@@ -36,7 +36,7 @@ export default function UsersScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Pressable testID="back-btn" onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={Colors.text} /></Pressable>
         <Text style={styles.title}>Users</Text>

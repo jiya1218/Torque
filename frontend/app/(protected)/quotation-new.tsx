@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { api } from '../../src/utils/api';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar, View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StatusBar, useRouter } from 'expo-router';
+import { StatusBar, api } from '../../src/utils/api';
+import { StatusBar, Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
+import { StatusBar, Ionicons } from '@expo/vector-icons';
 
 export default function QuotationNewScreen() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function QuotationNewScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Pressable testID="back-btn" onPress={() => router.back()} style={styles.backBtn}><Ionicons name="close" size={24} color={Colors.text} /></Pressable>
         <Text style={styles.headerTitle}>New Quotation</Text>
