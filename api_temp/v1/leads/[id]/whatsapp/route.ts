@@ -17,10 +17,17 @@ export async function POST(
     })
 
     // Also update lead status to 'Contacted' if it was 'New'
-    await prisma.lead.update({
-      where: { id: leadId, status: 'New' },
-      data: { status: 'Contacted' }
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { status: true }
     })
+    
+    if (lead && lead.status === 'New') {
+      await prisma.lead.update({
+        where: { id: leadId },
+        data: { status: 'Contacted' }
+      })
+    }
 
     return NextResponse.json({ success: true, logId: log.id })
   } catch (error: any) {
