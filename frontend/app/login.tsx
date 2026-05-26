@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator, Alert, Animated
+  ActivityIndicator, Alert, Animated, Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../src/lib/supabase';
@@ -57,11 +57,12 @@ export default function LoginScreen() {
 
         {/* ── Hero / Branding ──────────────────────────────────────────── */}
         <View style={styles.hero}>
-          <View style={styles.logoWrap}>
-            <Ionicons name="shield-checkmark" size={40} color={Colors.white} />
-          </View>
-          <Text style={styles.brand}>Toque Insurance</Text>
-          <Text style={styles.tagline}>Internal Management System</Text>
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logoImage} 
+            resizeMode="contain"
+          />
+          <Text style={styles.tagline}>Complete Insurance Management</Text>
         </View>
 
         {/* ── Card ─────────────────────────────────────────────────────── */}
@@ -174,16 +175,7 @@ const styles = StyleSheet.create({
 
   // ── Hero ────────────────────────────────────────────────────────────
   hero: { alignItems: 'center', marginBottom: Spacing.xxxl },
-  logoWrap: {
-    width: 80, height: 80, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  brand: {
-    fontSize: FontSize.hero, fontWeight: '900', color: Colors.white,
-    letterSpacing: -0.5,
-  },
+  logoImage: { width: 240, height: 85, marginBottom: Spacing.xs },
   tagline: {
     fontSize: FontSize.sm, color: 'rgba(255,255,255,0.7)',
     marginTop: Spacing.xs, letterSpacing: 0.5,

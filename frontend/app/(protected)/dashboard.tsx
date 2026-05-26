@@ -24,7 +24,34 @@ export default function DashboardScreen() {
         api.get('/dashboard/stats'),
         api.get('/notifications?limit=5')
       ]);
-      setStats(sData);
+      
+      let leads = 0;
+      let revenue = 0;
+      let pending = 0;
+      let claims = 0;
+
+      if (sData) {
+        if (sData.view === 'admin') {
+          leads = sData.total_leads || 0;
+          pending = sData.pending_followups || 0;
+          claims = sData.active_claims || 0;
+          revenue = sData.revenue_trend?.reduce((acc: number, item: any) => acc + (Number(item._sum?.amount) || 0), 0) || 0;
+        } else if (sData.view === 'manager') {
+          leads = sData.total_leads || 0;
+          pending = sData.pending_followups || 0;
+          claims = sData.active_claims || 0;
+        } else if (sData.view === 'agent') {
+          leads = sData.my_leads || 0;
+          pending = sData.pending_followups || 0;
+        } else {
+          leads = sData.leads || 0;
+          revenue = sData.revenue || 0;
+          pending = sData.pending || 0;
+          claims = sData.claims || 0;
+        }
+      }
+
+      setStats({ leads, revenue, pending, claims });
       setItems(nData.notifications || []);
     } catch {
       setStats({ leads: 0, revenue: 0, pending: 0, claims: 0 });
