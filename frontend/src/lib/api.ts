@@ -3,7 +3,7 @@ import axios from 'axios';
 import { supabase } from './supabase';
 
 // Hardcoded for production builds — env vars are NOT available inside APKs
-const LIVE_API_URL = 'https://insurance-toque-admin-panel.vercel.app/api/v1';
+const LIVE_API_URL = 'https://toruqfinal-admin-panel.vercel.app/api/v1';
 
 const getApiUrl = () => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
