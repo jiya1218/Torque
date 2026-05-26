@@ -14,6 +14,54 @@ export default function LeadDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isWhatsAppModalVisible, setIsWhatsAppModalVisible] = useState(false);
   const [whatsAppMessage, setWhatsAppMessage] = useState('');
+  const [suggestion, setSuggestion] = useState('');
+  const [savingSuggestion, setSavingSuggestion] = useState(false);
+  const [correctionField, setCorrectionField] = useState<'clientPhone' | 'vehicleNo'>('clientPhone');
+  const [correctionValue, setCorrectionValue] = useState('');
+  const [submittingCorrection, setSubmittingCorrection] = useState(false);
+
+  const handleSaveSuggestion = async () => {
+    if (!suggestion.trim()) {
+      Alert.alert('Empty Text', 'Please type a suggestion first.');
+      return;
+    }
+    setSavingSuggestion(true);
+    try {
+      await api.post(`/leads/${id}/suggestion`, { text: suggestion.trim() });
+      Alert.alert('Success', 'Suggestion saved successfully.');
+      setSuggestion('');
+      loadData();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to save suggestion');
+    } finally {
+      setSavingSuggestion(false);
+    }
+  };
+
+  const handleSubmitCorrection = async () => {
+    if (!correctionValue.trim()) {
+      Alert.alert('Empty Value', 'Please enter a correction value.');
+      return;
+    }
+    setSubmittingCorrection(true);
+    try {
+      const oldValue = correctionField === 'clientPhone' ? lead.phone : lead.vehicleNo;
+      await api.post('/data/changes', {
+        entityType: 'Lead',
+        entityId: id,
+        field: correctionField,
+        oldValue: oldValue || '',
+        newValue: correctionValue.trim(),
+        reason: 'Sales representative correction request'
+      });
+      Alert.alert('Success', 'Correction request submitted for Admin approval.');
+      setCorrectionValue('');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to submit request');
+    } finally {
+      setSubmittingCorrection(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -121,6 +169,83 @@ export default function LeadDetailScreen() {
           <InfoRow label="Agent" value={lead.existingAgent} />
           <InfoRow label="City" value={lead.city} />
           <InfoRow label="Address" value={lead.address} />
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionLabel}>SUGGESTIONS & NOTES</Text>
+          <View style={styles.suggestionForm}>
+            <TextInput
+              style={styles.suggestionInput}
+              placeholder="Add a suggestion or custom note..."
+              placeholderTextColor={Colors.textLight}
+              value={suggestion}
+              onChangeText={setSuggestion}
+              multiline={true}
+              numberOfLines={2}
+            />
+            <Pressable 
+              style={[styles.saveSuggestionBtn, savingSuggestion && { opacity: 0.7 }]} 
+              onPress={handleSaveSuggestion}
+              disabled={savingSuggestion}
+            >
+              {savingSuggestion ? (
+                <ActivityIndicator color={Colors.white} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} />
+                  <Text style={styles.saveSuggestionText}>Save Suggestion</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionLabel}>REQUEST DATA CORRECTION (ADMIN APPROVAL)</Text>
+          <View style={styles.correctionRow}>
+            <Pressable 
+              style={[styles.selectorBtn, correctionField === 'clientPhone' && styles.selectorBtnActive]}
+              onPress={() => { setCorrectionField('clientPhone'); setCorrectionValue(''); }}
+            >
+              <Text style={[styles.selectorText, correctionField === 'clientPhone' && styles.selectorTextActive]}>Mobile No</Text>
+            </Pressable>
+            <Pressable 
+              style={[styles.selectorBtn, correctionField === 'vehicleNo' && styles.selectorBtnActive]}
+              onPress={() => { setCorrectionField('vehicleNo'); setCorrectionValue(''); }}
+            >
+              <Text style={[styles.selectorText, correctionField === 'vehicleNo' && styles.selectorTextActive]}>Registration No</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.currentValLabel}>
+            CURRENT VALUE: {correctionField === 'clientPhone' ? (lead.phone || 'None') : (lead.vehicleNo || 'None')}
+          </Text>
+
+          <View style={styles.correctionForm}>
+            <TextInput
+              style={styles.correctionInput}
+              placeholder={correctionField === 'clientPhone' ? "Enter new correct mobile number..." : "Enter new registration number..."}
+              placeholderTextColor={Colors.textLight}
+              value={correctionValue}
+              onChangeText={setCorrectionValue}
+              keyboardType={correctionField === 'clientPhone' ? 'phone-pad' : 'default'}
+              autoCapitalize={correctionField === 'vehicleNo' ? 'characters' : 'none'}
+            />
+            <Pressable 
+              style={[styles.submitCorrectionBtn, submittingCorrection && { opacity: 0.7 }]} 
+              onPress={handleSubmitCorrection}
+              disabled={submittingCorrection}
+            >
+              {submittingCorrection ? (
+                <ActivityIndicator color={Colors.white} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="paper-plane-outline" size={16} color={Colors.white} />
+                  <Text style={styles.submitCorrectionText}>Request Change</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.infoCard}>
@@ -336,5 +461,95 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.white,
+  },
+  suggestionForm: {
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  suggestionInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    fontSize: FontSize.md,
+    color: Colors.text,
+    backgroundColor: Colors.background,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  saveSuggestionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    height: 44,
+    borderRadius: BorderRadius.sm,
+    gap: 6,
+  },
+  saveSuggestionText: {
+    color: Colors.white,
+    fontWeight: '700',
+    fontSize: FontSize.sm,
+  },
+  correctionRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  selectorBtn: {
+    flex: 1,
+    height: 38,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+  },
+  selectorBtnActive: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
+  },
+  selectorText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  selectorTextActive: {
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  currentValLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    marginBottom: Spacing.sm,
+  },
+  correctionForm: {
+    gap: Spacing.sm,
+  },
+  correctionInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    fontSize: FontSize.md,
+    color: Colors.text,
+    backgroundColor: Colors.background,
+  },
+  submitCorrectionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    height: 44,
+    borderRadius: BorderRadius.sm,
+    gap: 6,
+  },
+  submitCorrectionText: {
+    color: Colors.white,
+    fontWeight: '700',
+    fontSize: FontSize.sm,
   },
 });
