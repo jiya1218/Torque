@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../../src/utils/theme';
@@ -12,6 +12,8 @@ export default function LeadDetailScreen() {
   const [lead, setLead] = useState<any>(null);
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isWhatsAppModalVisible, setIsWhatsAppModalVisible] = useState(false);
+  const [whatsAppMessage, setWhatsAppMessage] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -40,14 +42,21 @@ export default function LeadDetailScreen() {
     }
   };
 
-  const openWhatsApp = async () => {
+  const triggerWhatsAppModal = () => {
+    if (lead?.phone) {
+      const defaultMsg = `Hello ${lead.name || 'Customer'},\n\nYour vehicle ${lead.vehicleNo || lead.vehicle_number || ''} insurance expires on ${lead.expiryDate ? new Date(lead.expiryDate).toLocaleDateString() : 'soon'}.\n\nRenew today with Torque Auto Advisor.`;
+      setWhatsAppMessage(defaultMsg);
+      setIsWhatsAppModalVisible(true);
+    }
+  };
+
+  const sendWhatsApp = async () => {
+    setIsWhatsAppModalVisible(false);
     if (lead?.phone) {
       try {
         // Log to backend
         await api.post(`/leads/${id}/whatsapp`, {});
-        
-        const msg = `Hello ${lead.name || 'Customer'},\nYour vehicle ${lead.vehicleNo || lead.vehicle_number || ''} insurance expires on ${lead.expiryDate ? new Date(lead.expiryDate).toLocaleDateString() : 'soon'}.\nRenew today with Torque Auto Advisor.`;
-        Linking.openURL(`https://wa.me/91${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`);
+        Linking.openURL(`https://wa.me/91${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsAppMessage)}`);
       } catch (err) {
         console.error('Failed to log WhatsApp:', err);
       }
@@ -86,19 +95,19 @@ export default function LeadDetailScreen() {
         </View>
 
         <View style={styles.actionsRow}>
-          <Pressable style={[styles.actionBtn, { backgroundColor: Colors.success + '15' }]} onPress={makeCall}>
-            <Ionicons name="call" size={22} color={Colors.success} />
+          <Pressable style={[styles.actionBtn, { backgroundColor: Colors.success + '15', borderColor: Colors.success + '30' }]} onPress={makeCall}>
+            <Ionicons name="call" size={18} color={Colors.success} />
             <Text style={[styles.actionLabel, { color: Colors.success }]}>Call</Text>
           </Pressable>
-          <Pressable style={[styles.actionBtn, { backgroundColor: '#25D36615' }]} onPress={openWhatsApp}>
-            <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+          <Pressable style={[styles.actionBtn, { backgroundColor: '#25D36615', borderColor: '#25D36630' }]} onPress={triggerWhatsAppModal}>
+            <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
             <Text style={[styles.actionLabel, { color: '#25D366' }]}>WhatsApp</Text>
           </Pressable>
           <Pressable 
-            style={[styles.actionBtn, { backgroundColor: Colors.primaryLight }]} 
+            style={[styles.actionBtn, { backgroundColor: Colors.primaryLight, borderColor: Colors.primary + '30' }]} 
             onPress={() => router.push({ pathname: '/call-log', params: { leadId: id, leadName: lead.name } })}
           >
-            <Ionicons name="create" size={22} color={Colors.primary} />
+            <Ionicons name="create" size={18} color={Colors.primary} />
             <Text style={[styles.actionLabel, { color: Colors.primary }]}>Response</Text>
           </Pressable>
         </View>
@@ -129,6 +138,54 @@ export default function LeadDetailScreen() {
         </View>
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Premium WhatsApp Message Editor Modal */}
+      <Modal
+        visible={isWhatsAppModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsWhatsAppModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconBg}>
+                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+              </View>
+              <Text style={styles.modalTitle}>Customize Message</Text>
+            </View>
+            
+            <Text style={styles.modalLabel}>RECIPIENT: {lead?.name} ({lead?.phone})</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              value={whatsAppMessage}
+              onChangeText={setWhatsAppMessage}
+              multiline={true}
+              numberOfLines={6}
+              textAlignVertical="top"
+              placeholder="Type your WhatsApp message..."
+              placeholderTextColor={Colors.textLight}
+            />
+
+            <View style={styles.modalFooter}>
+              <Pressable 
+                style={styles.modalCancelBtn} 
+                onPress={() => setIsWhatsAppModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable 
+                style={styles.modalSendBtn} 
+                onPress={sendWhatsApp}
+              >
+                <Ionicons name="send" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                <Text style={styles.modalSendText}>Send</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -160,9 +217,28 @@ const styles = StyleSheet.create({
   leadEmail: { fontSize: FontSize.sm, color: Colors.textLight },
   statusBadgeLg: { alignSelf: 'flex-start', paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.sm },
   statusTextLg: { fontSize: FontSize.sm, fontWeight: '700' },
-  actionsRow: { flexDirection: 'row', padding: Spacing.lg, gap: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.md, borderRadius: BorderRadius.sm, gap: Spacing.sm },
-  actionLabel: { fontSize: FontSize.sm, fontWeight: '700' },
+  actionsRow: { 
+    flexDirection: 'row', 
+    padding: Spacing.lg, 
+    gap: Spacing.md, 
+    borderBottomWidth: 1, 
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  actionBtn: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    height: 48,
+    borderRadius: BorderRadius.sm, 
+    gap: 6,
+    borderWidth: 1,
+  },
+  actionLabel: { 
+    fontSize: FontSize.xs, 
+    fontWeight: '700',
+  },
   infoCard: { padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },
   sectionLabel: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.md },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.surfaceMuted },
@@ -172,4 +248,93 @@ const styles = StyleSheet.create({
   callInfo: { flex: 1 },
   callBy: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
   callNote: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modalContainer: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  modalIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#25D36615',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    marginBottom: Spacing.sm,
+    letterSpacing: 0.5,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    fontSize: FontSize.md,
+    color: Colors.text,
+    backgroundColor: Colors.background,
+    minHeight: 120,
+    lineHeight: 20,
+    marginBottom: Spacing.lg,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  modalSendBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSendText: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.white,
+  },
 });

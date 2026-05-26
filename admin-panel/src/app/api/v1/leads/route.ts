@@ -33,18 +33,21 @@ export async function GET(req: NextRequest) {
     }
 
     // RBAC: Dynamic filtering based on role
-    if (context && context.role === 'EXECUTIVE') {
-      where.assignedTo = context.userId
-    } else if (context && context.role === 'MANAGER') {
+    const roleUpper = context?.role?.toUpperCase() || ''
+    const isExecutive = roleUpper.endsWith('EXECUTIVE') || roleUpper === 'TELECALLER' || roleUpper === 'VIEWER'
+    
+    if (isExecutive) {
+      where.assignedTo = context!.userId
+    } else if (roleUpper === 'MANAGER') {
       const team = await prisma.user.findMany({
-        where: { managerId: context.userId },
+        where: { managerId: context!.userId },
         select: { id: true }
       })
       const teamIds = team.map(t => t.id)
       // Manager sees their own leads + team leads
-      where.assignedTo = { in: [context.userId, ...teamIds] }
+      where.assignedTo = { in: [context!.userId, ...teamIds] }
     }
-    // Admin sees everything (no assignedTo filter)
+    // Admin / Super Admin sees everything (no assignedTo filter)
 
 
     if (status && status !== 'all') {

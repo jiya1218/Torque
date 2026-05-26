@@ -32,10 +32,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // RBAC: If not Admin/Super Admin, only see assigned leads
-    if (context && !['Super Admin', 'Admin'].includes(context.role)) {
-      where.assignedTo = context.userId
+    // RBAC: Dynamic filtering based on role
+    const roleUpper = context?.role?.toUpperCase() || ''
+    const isExecutive = roleUpper.endsWith('EXECUTIVE') || roleUpper === 'TELECALLER' || roleUpper === 'VIEWER'
+    
+    if (isExecutive) {
+      where.assignedTo = context!.userId
+    } else if (roleUpper === 'MANAGER') {
+      const team = await prisma.user.findMany({
+        where: { managerId: context!.userId },
+        select: { id: true }
+      })
+      const teamIds = team.map(t => t.id)
+      // Manager sees their own leads + team leads
+      where.assignedTo = { in: [context!.userId, ...teamIds] }
     }
+    // Admin / Super Admin sees everything (no assignedTo filter)
 
     if (status && status !== 'all') {
       where.status = status

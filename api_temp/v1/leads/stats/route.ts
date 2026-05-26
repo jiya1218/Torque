@@ -7,18 +7,40 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   try {
-    const totalLeads = await prisma.lead.count()
-    const assignedLeads = await prisma.lead.count({ where: { assignedTo: { not: null } } })
-    const unassignedLeads = await prisma.lead.count({ where: { assignedTo: null } })
-    const convertedLeads = await prisma.lead.count({ where: { status: 'Converted' } })
-    const pendingFollowups = await prisma.lead.count({ where: { status: 'Follow-up' } })
-    const notInterestedLeads = await prisma.lead.count({ where: { status: 'Not Interested' } })
+    const where: any = {}
+    const roleUpper = context?.role?.toUpperCase() || ''
+    const isExecutive = roleUpper.endsWith('EXECUTIVE') || roleUpper === 'TELECALLER' || roleUpper === 'VIEWER'
+    
+    if (isExecutive) {
+      where.assignedTo = context!.userId
+    } else if (roleUpper === 'MANAGER') {
+      const team = await prisma.user.findMany({
+        where: { managerId: context!.userId },
+        select: { id: true }
+      })
+      const teamIds = team.map(t => t.id)
+      where.assignedTo = { in: [context!.userId, ...teamIds] }
+    }
+
+    const totalLeads = await prisma.lead.count({ where })
+    const assignedLeads = await prisma.lead.count({ where: { ...where, assignedTo: { not: null } } })
+    const unassignedLeads = await prisma.lead.count({ where: { ...where, assignedTo: null } })
+    const convertedLeads = await prisma.lead.count({ where: { ...where, status: 'Converted' } })
+    const pendingFollowups = await prisma.lead.count({ where: { ...where, status: { in: ['Follow Up', 'Follow-up'] } } })
+    const notInterestedLeads = await prisma.lead.count({ where: { ...where, status: 'Not Interested' } })
+    
+    const employeeWhere: any = {
+      role: {
+        name: { notIn: ['Super Admin', 'Admin', 'Viewer'] }
+      }
+    }
+    
+    if (roleUpper === 'MANAGER') {
+      employeeWhere.managerId = context!.userId
+    }
+
     const employeeStats = await prisma.user.findMany({
-      where: {
-        role: {
-          name: { notIn: ['Super Admin', 'Admin', 'Viewer'] }
-        }
-      },
+      where: employeeWhere,
       select: {
         id: true,
         fullName: true,
