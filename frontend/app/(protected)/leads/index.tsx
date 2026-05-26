@@ -73,7 +73,7 @@ export default function LeadsScreen() {
         contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
         ListEmptyComponent={<View style={styles.empty}><Ionicons name="people-outline" size={48} color={Colors.textLight} /><Text style={styles.emptyText}>No leads assigned to you</Text></View>}
         renderItem={({ item }) => {
-          const sc = StatusColors[item.status.toLowerCase()] || StatusColors.new;
+          const sc = StatusColors[(item.status || 'New').toLowerCase()] || StatusColors.new;
           return (
             <Pressable 
               style={styles.card} 

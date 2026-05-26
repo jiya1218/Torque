@@ -38,8 +38,9 @@ async function request<T = any>(method: string, path: string, body?: any): Promi
   try {
     const response = await fetch(url, config);
     if (!response.ok) {
-      const errData = await response.json().catch(() => ({ detail: 'Request failed' }));
-      throw new Error(typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail));
+      const errData = await response.json().catch(() => ({}));
+      const errorMsg = errData.error || errData.detail || errData.message || `HTTP error! status: ${response.status}`;
+      throw new Error(errorMsg);
     }
     return response.json() as Promise<T>;
   } catch (err: any) {
