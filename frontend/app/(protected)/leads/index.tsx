@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, SafeAreaView, RefreshControl, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../../src/utils/theme';
@@ -127,6 +128,25 @@ export default function LeadsScreen() {
           );
         }}
       />
+      {/* Sticky Bottom Footer Navigation */}
+      <View style={styles.footer}>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/dashboard')}>
+          <Ionicons name="home-outline" size={22} color={Colors.textMuted} />
+          <Text style={styles.footerText}>Home</Text>
+        </Pressable>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/leads')}>
+          <Ionicons name="people" size={22} color={Colors.primary} />
+          <Text style={[styles.footerText, { color: Colors.primary, fontWeight: '700' }]}>Leads</Text>
+        </Pressable>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/visits')}>
+          <Ionicons name="location-outline" size={22} color={Colors.textMuted} />
+          <Text style={styles.footerText}>Visits</Text>
+        </Pressable>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/settings')}>
+          <Ionicons name="settings-outline" size={22} color={Colors.textMuted} />
+          <Text style={styles.footerText}>Settings</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -153,4 +173,26 @@ const styles = StyleSheet.create({
   btnText: { fontSize: FontSize.xs, fontWeight: '700' },
   empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
   emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  footer: {
+    flexDirection: 'row',
+    height: 64,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 12 : 0,
+  },
+  footerTab: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    width: 60,
+  },
+  footerText: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 2,
+    fontWeight: '500',
+  },
 });

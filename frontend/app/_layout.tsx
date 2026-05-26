@@ -2,6 +2,7 @@ import { Slot, useRouter, useSegments, useRootNavigationState } from 'expo-route
 import React, { useEffect } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -77,9 +78,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

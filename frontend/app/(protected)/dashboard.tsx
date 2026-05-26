@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl, Dimensions, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
@@ -131,6 +132,25 @@ export default function DashboardScreen() {
         
         <View style={{ height: 40 }} />
       </ScrollView>
+      {/* Sticky Bottom Footer Navigation */}
+      <View style={styles.footer}>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/dashboard')}>
+          <Ionicons name="home" size={22} color={Colors.primary} />
+          <Text style={[styles.footerText, { color: Colors.primary, fontWeight: '700' }]}>Home</Text>
+        </Pressable>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/leads')}>
+          <Ionicons name="people-outline" size={22} color={Colors.textMuted} />
+          <Text style={styles.footerText}>Leads</Text>
+        </Pressable>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/visits')}>
+          <Ionicons name="location-outline" size={22} color={Colors.textMuted} />
+          <Text style={styles.footerText}>Visits</Text>
+        </Pressable>
+        <Pressable style={styles.footerTab} onPress={() => router.push('/(protected)/settings')}>
+          <Ionicons name="settings-outline" size={22} color={Colors.textMuted} />
+          <Text style={styles.footerText}>Settings</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -200,4 +220,26 @@ const styles = StyleSheet.create({
   activityIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   activityText: { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
   activityTime: { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 2 },
+  footer: {
+    flexDirection: 'row',
+    height: 64,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 12 : 0,
+  },
+  footerTab: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    width: 60,
+  },
+  footerText: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 2,
+    fontWeight: '500',
+  },
 });
