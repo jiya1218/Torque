@@ -10,14 +10,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils/theme';
 
 const TABS = [
-  { label: 'Home',     icon: 'home',             iconOutline: 'home-outline',     route: '/(protected)/dashboard' },
-  { label: 'Leads',    icon: 'people',            iconOutline: 'people-outline',   route: '/(protected)/leads'     },
-  { label: 'Visits',   icon: 'location',          iconOutline: 'location-outline', route: '/(protected)/visits'    },
-  { label: 'Settings', icon: 'settings',          iconOutline: 'settings-outline', route: '/(protected)/settings'  },
+  { label: 'Home',       icon: 'home',             iconOutline: 'home-outline',     route: '/(protected)/dashboard' },
+  { label: 'Leads',      icon: 'people',            iconOutline: 'people-outline',   route: '/(protected)/leads'     },
+  { label: 'Follow-ups', icon: 'calendar',          iconOutline: 'calendar-outline', route: '/(protected)/follow-ups' },
+  { label: 'Settings',   icon: 'settings',          iconOutline: 'settings-outline', route: '/(protected)/settings'  },
 ];
 
 interface Props {
-  active?: 'home' | 'leads' | 'visits' | 'settings';
+  active?: 'home' | 'leads' | 'follow-ups' | 'settings';
 }
 
 export default function AppFooter({ active }: Props) {
@@ -30,7 +30,7 @@ export default function AppFooter({ active }: Props) {
       const map: Record<string, string> = {
         home: '/(protected)/dashboard',
         leads: '/(protected)/leads',
-        visits: '/(protected)/visits',
+        'follow-ups': '/(protected)/follow-ups',
         settings: '/(protected)/settings',
       };
       return map[active] === route;

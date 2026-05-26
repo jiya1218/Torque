@@ -129,7 +129,7 @@ export default function VisitsScreen() {
         }}
       />
 
-      <AppFooter active="visits" />
+      <AppFooter />
     </SafeAreaView>
   );
 }
