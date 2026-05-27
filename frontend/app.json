@@ -10,15 +10,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.utkarshmakwana.toque"
+      "bundleIdentifier": "com.utkarshmakwana.torque"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.utkarshmakwana.toque",
-      "versionCode": 9,
+      "package": "com.utkarshmakwana.torque",
+      "versionCode": 10,
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
