@@ -161,11 +161,24 @@ async function main() {
     ],
 
     "HR Manager": [
-      "hr.view", "hr.create", "hr.edit", "hr.manage_attendance", "hr.manage_leave", "hr.view_performance",
-      "dashboard.view_manager",
-      "accounts.manage_salary",
-      "notification.view",
-      "users.view", "users.create", "users.edit", "users.delete"
+      "dashboard.view_admin", "dashboard.view_manager", "dashboard.view_agent", "dashboard.export",
+      "lead.view", "lead.create", "lead.edit", "lead.delete", "lead.assign", "lead.import", "lead.export", "lead.change_status",
+      "crm.view", "crm.create", "crm.edit", "crm.delete", "crm.manage_followups", "crm.view_revenue",
+      "quotation.view", "quotation.create", "quotation.edit", "quotation.delete", "quotation.generate_pdf", "quotation.share",
+      "claims.view", "claims.create", "claims.edit", "claims.delete", "claims.update_status", "claims.upload_documents",
+      "loan.view", "loan.create", "loan.edit", "loan.delete", "loan.update_status", "loan.track_conversion",
+      "rto.view", "rto.create", "rto.edit", "rto.delete", "rto.update_status", "rto.track_payment",
+      "vahan.view", "vahan.create", "vahan.edit", "vahan.delete", "vahan.update_status", "vahan.track_payment",
+      "fitness.view", "fitness.create", "fitness.edit", "fitness.delete", "fitness.update_status", "fitness.track_payment",
+      "visit.view", "visit.create", "visit.edit", "visit.delete", "visit.track_location", "visit.manage_followups",
+      "users.view", "users.create", "users.edit", "users.delete",
+      "role.view", "role.create", "role.edit", "role.delete", "role.assign_permissions", "role.manage_users",
+      "hr.view", "hr.create", "hr.edit", "hr.delete", "hr.manage_attendance", "hr.manage_leave", "hr.view_performance",
+      "accounts.view", "accounts.create_entry", "accounts.edit_entry", "accounts.delete_entry", "accounts.view_reports", "accounts.export", "accounts.manage_salary",
+      "data.view", "data.create", "data.edit", "data.delete", "data.approve_changes", "data.manage_documents",
+      "template.view", "template.create", "template.edit", "template.delete",
+      "notification.view", "notification.send", "notification.manage", "notification.configure",
+      "system.settings_manage", "system.audit_logs_view", "quotations.approve", "settings.manage"
     ],
 
     "Viewer": [

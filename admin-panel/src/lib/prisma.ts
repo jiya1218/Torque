@@ -15,6 +15,13 @@ declare global {
 }
 
 function createPrismaClient(): PrismaClient {
+  // For Prisma v7, use DATABASE_URL (pooler) for normal operations
+  const databaseUrl = process.env.DATABASE_URL
+  
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is not set')
+  }
+
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   })

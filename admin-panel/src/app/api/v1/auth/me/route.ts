@@ -11,7 +11,16 @@ export async function GET(req: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { id: context!.userId },
       include: {
-        role: { select: { name: true } }
+        role: {
+          include: {
+            permissions: {
+              select: { name: true }
+            }
+          }
+        },
+        permissions: {
+          select: { name: true }
+        }
       }
     })
     return NextResponse.json(user)

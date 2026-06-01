@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    setIsLoading(true)
     const accessToken = session.access_token
     setToken(accessToken)
 
@@ -54,9 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.ok) {
         const data = await response.json()
+        const rolePermissions = data.role?.permissions?.map((p: any) => p.name) || []
+        const userPermissions = data.permissions?.map((p: any) => p.name) || []
         setUser({
           ...data,
-          permissions: data.role?.permissions?.map((p: any) => p.name) || []
+          permissions: Array.from(new Set([...rolePermissions, ...userPermissions]))
         })
       } else {
         const errorData = await response.json().catch(() => ({}))

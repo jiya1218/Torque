@@ -19,7 +19,9 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'pending' | 'active'>('all')
 
-  const isAdmin = currentUser?.role?.name?.toUpperCase() === 'ADMIN' || currentUser?.role?.name?.toUpperCase() === 'SUPER ADMIN'
+  const isAdmin = currentUser?.role?.name?.toUpperCase() === 'ADMIN' || 
+    currentUser?.role?.name?.toUpperCase() === 'SUPER ADMIN' || 
+    currentUser?.role?.name?.toUpperCase() === 'HR MANAGER'
   const isManager = currentUser?.role?.name?.toUpperCase() === 'MANAGER'
 
   // Modals

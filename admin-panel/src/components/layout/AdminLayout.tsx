@@ -7,6 +7,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { Home, Users, Calendar, Settings } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 export default function AdminLayout({
   children,
@@ -16,14 +17,41 @@ export default function AdminLayout({
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+  const [checkingForm, setCheckingForm] = React.useState(true)
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login')
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login')
+      } else {
+        const checkFormStatus = async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.access_token) {
+              setCheckingForm(false)
+              return
+            }
+            const response = await fetch('/api/v1/onboarding/check-form-status', {
+              headers: { 'Authorization': `Bearer ${session.access_token}` }
+            })
+            if (response.ok) {
+              const data = await response.json()
+              if (data.requiresForm) {
+                router.push('/onboarding/form')
+                return
+              }
+            }
+          } catch (err) {
+            console.error('Error checking onboarding form status:', err)
+          }
+          setCheckingForm(false)
+        }
+        checkFormStatus()
+      }
     }
   }, [user, isLoading, router])
 
-  if (isLoading) {
+  if (isLoading || (user && checkingForm)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

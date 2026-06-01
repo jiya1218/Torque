@@ -30,9 +30,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
-    // 2. Create user in Prisma DB (marked as inactive until admin approval)
-    const user = await prisma.user.create({
-      data: {
+    // 2. Create/Update user in Prisma DB (using upsert to handle trigger-created rows)
+    const user = await prisma.user.upsert({
+      where: { id: authData.user.id },
+      update: {
+        email,
+        fullName,
+        roleId: roleId || null,
+        isActive: false, // Wait for admin approval
+        highestQualification,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        joiningDate: joiningDate ? new Date(joiningDate) : null,
+        personalMobile,
+        homeMobile,
+        documents: documents?.length ? {
+          create: documents.map((doc: any) => ({
+            entityType: 'User',
+            fileName: doc.type,
+            filePath: doc.url
+          }))
+        } : undefined
+      },
+      create: {
         id: authData.user.id,
         email,
         fullName,

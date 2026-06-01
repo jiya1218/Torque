@@ -1,16 +1,50 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { User, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { User, Mail, Lock, Shield, ArrowRight, AlertCircle } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
+  const { user, isLoading } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [roleId, setRoleId] = useState('')
+  const [managerId, setManagerId] = useState('')
+  const [roles, setRoles] = useState<any[]>([])
+  const [managers, setManagers] = useState<any[]>([])
+  const [metadataLoading, setMetadataLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      router.push('/')
+    }
+  }, [user, isLoading, router])
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch('/api/v1/auth/signup-metadata')
+        if (response.ok) {
+          const data = await response.json()
+          setRoles(data.roles || [])
+          setManagers(data.managers || [])
+        }
+      } catch (err) {
+        console.error('Error fetching signup metadata:', err)
+      } finally {
+        setMetadataLoading(false)
+      }
+    }
+    fetchMetadata()
+  }, [])
+
+  const selectedRole = roles.find(r => r.id === roleId)
+  const isSalesExecutive = selectedRole?.name?.toLowerCase().includes('sales executive') || selectedRole?.name?.toLowerCase().includes('executive')
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -18,19 +52,24 @@ export default function SignupPage() {
     setError(null)
 
     try {
-      const { error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          }
-        }
+      const response = await fetch('/api/v1/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: name,
+          email,
+          password,
+          roleId,
+          managerId: isSalesExecutive ? managerId : undefined
+        })
       })
 
-      if (authError) throw authError
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account')
+      }
 
-      // Automatically sign them in or redirect them to login
+      // Automatically redirect them to login
       router.push('/login')
     } catch (err: any) {
       setError(err.message || 'Failed to create account')
@@ -128,6 +167,68 @@ export default function SignupPage() {
                 />
               </div>
             </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-semibold text-gray-700">
+                Role
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <Shield size={18} />
+                </div>
+                <select
+                  id="role"
+                  name="role"
+                  required
+                  disabled={metadataLoading}
+                  value={roleId}
+                  onChange={(e) => {
+                    setRoleId(e.target.value)
+                    const r = roles.find(role => role.id === e.target.value)
+                    const isExec = r?.name?.toLowerCase().includes('sales executive') || r?.name?.toLowerCase().includes('executive')
+                    if (!isExec) {
+                      setManagerId('')
+                    }
+                  }}
+                  className="appearance-none block w-full pl-10 pr-10 px-3 py-2 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all sm:text-sm bg-white"
+                >
+                  <option value="">{metadataLoading ? 'Loading roles...' : 'Select your role'}</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {isSalesExecutive && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <label htmlFor="manager" className="block text-sm font-semibold text-gray-700">
+                  Reporting Manager
+                </label>
+                <div className="mt-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <User size={18} />
+                  </div>
+                  <select
+                    id="manager"
+                    name="manager"
+                    required
+                    value={managerId}
+                    onChange={(e) => setManagerId(e.target.value)}
+                    className="appearance-none block w-full pl-10 pr-10 px-3 py-2 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all sm:text-sm bg-white"
+                  >
+                    <option value="">Select your manager</option>
+                    {managers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.fullName}{m.role?.name ? ` (${m.role.name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div>
               <button

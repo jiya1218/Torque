@@ -106,9 +106,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
-    // 2. Create user in Prisma DB
-    const user = await prisma.user.create({
-      data: {
+    // 2. Create/Update user in Prisma DB (using upsert to handle trigger-created rows)
+    const user = await prisma.user.upsert({
+      where: { id: authData.user.id },
+      update: {
+        email,
+        fullName,
+        roleId: finalRoleId || null,
+        managerId: finalManagerId,
+        isActive: finalIsActive,
+        highestQualification,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        joiningDate: joiningDate ? new Date(joiningDate) : null,
+        personalMobile,
+        homeMobile,
+        permissions: extraPermissionIds?.length
+          ? { connect: extraPermissionIds.map((id: string) => ({ id })) }
+          : undefined
+      },
+      create: {
         id: authData.user.id,
         email,
         fullName,

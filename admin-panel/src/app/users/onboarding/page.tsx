@@ -18,7 +18,9 @@ export default function OnboardingApprovalsPage() {
   const [actioning, setActioning] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
-  const isAdmin = currentUser?.role?.name?.toUpperCase() === 'SUPER ADMIN' || currentUser?.role?.name?.toUpperCase() === 'ADMIN'
+  const isAdmin = currentUser?.role?.name?.toUpperCase() === 'SUPER ADMIN' || 
+    currentUser?.role?.name?.toUpperCase() === 'ADMIN' || 
+    currentUser?.role?.name?.toUpperCase() === 'HR MANAGER'
 
   const fetchPendingUsers = useCallback(async () => {
     setIsLoading(true)

@@ -16,7 +16,8 @@ export interface AuthContext {
  */
 export async function validateAuth(
   req: NextRequest, 
-  requiredPermission?: string
+  requiredPermission?: string,
+  allowInactive = false
 ): Promise<{ context?: AuthContext; error?: NextResponse }> {
   try {
     const authHeader = req.headers.get('Authorization')
@@ -49,7 +50,7 @@ export async function validateAuth(
       return { error: NextResponse.json({ error: 'User profile not found' }, { status: 404 }) }
     }
 
-    if (!profile.isActive) {
+    if (!profile.isActive && !allowInactive) {
       return { error: NextResponse.json({ error: 'User account is deactivated' }, { status: 403 }) }
     }
 

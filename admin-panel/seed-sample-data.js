@@ -1,17 +1,19 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const fs = require('fs')
+const path = require('path')
 
 async function main() {
-  // Get the admin user to assign records (check new superadmin first)
-  let admin = await prisma.user.findUnique({ where: { email: 'superadmin@torque.in' } })
-  if (!admin) {
-    admin = await prisma.user.findUnique({ where: { email: 'jiya.scalezix@gmail.com' } })
+  // Get the user to assign records (prefer rahi.shaikh22@gmail.com)
+  let assigneeUser = await prisma.user.findUnique({ where: { email: 'rahi.shaikh22@gmail.com' } })
+  if (!assigneeUser) {
+    assigneeUser = await prisma.user.findUnique({ where: { email: 'jiya.scalezix@gmail.com' } })
   }
-  if (!admin) {
-    admin = await prisma.user.findFirst()
+  if (!assigneeUser) {
+    assigneeUser = await prisma.user.findFirst()
   }
-  if (!admin) { console.error('No users found in database to assign sample data!'); return }
-  const uid = admin.id
+  if (!assigneeUser) { console.error('No users found in database to assign sample data!'); return }
+  const uid = assigneeUser.id
 
   console.log('Seeding sample data (idempotent)...')
 
@@ -37,15 +39,58 @@ async function main() {
     { clientName: 'Deepa Nair', clientPhone: '9876543213', clientEmail: 'deepa@example.com', status: 'Proposal', assignedTo: uid, vehicleNo: 'KA-04-GH-3456', city: 'Bangalore' },
     { clientName: 'Sanjay Joshi', clientPhone: '9876543214', clientEmail: 'sanjay@example.com', status: 'Won', assignedTo: uid, vehicleNo: 'TN-05-IJ-7890', city: 'Chennai' },
   ]
+
+  // Read demo_leads_40.csv and append to leads
+  try {
+    const csvPath = path.join(__dirname, '..', 'demo_leads_40.csv')
+    if (fs.existsSync(csvPath)) {
+      const csvData = fs.readFileSync(csvPath, 'utf-8')
+      const lines = csvData.split('\n')
+      // Skip header line (index 0)
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+        const [ownerName, contactNumber, vehicleNo, expiryDateStr, email] = line.split(',')
+        if (ownerName && contactNumber && vehicleNo) {
+          let expiryDate = null
+          if (expiryDateStr) {
+            const [day, month, year] = expiryDateStr.split('/')
+            if (day && month && year) {
+              expiryDate = new Date(`${year}-${month}-${day}`)
+            }
+          }
+          
+          leads.push({
+            clientName: ownerName.trim(),
+            clientPhone: contactNumber.trim(),
+            clientEmail: email ? email.trim() : null,
+            status: ['New', 'Contacted', 'Qualified', 'Proposal', 'Won'][i % 5],
+            assignedTo: uid,
+            vehicleNo: vehicleNo.trim(),
+            city: ['Ahmedabad', 'Mumbai', 'Delhi', 'Bangalore', 'Chennai'][i % 5],
+            expiryDate: expiryDate
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error reading demo_leads_40.csv:', err)
+  }
+
   const createdLeads = []
   for (const l of leads) {
     let lead = await prisma.lead.findFirst({ where: { vehicleNo: l.vehicleNo } })
     if (!lead) {
       lead = await prisma.lead.create({ data: l })
+    } else {
+      lead = await prisma.lead.update({
+        where: { id: lead.id },
+        data: { assignedTo: uid }
+      })
     }
     createdLeads.push(lead)
   }
-  console.log('✓ 5 Leads')
+  console.log(`✓ ${createdLeads.length} Leads`)
 
   // 3. Claims
   const claims = [
@@ -56,7 +101,14 @@ async function main() {
   ]
   for (const c of claims) {
     const existing = await prisma.claim.findFirst({ where: { vehicleNumber: c.vehicleNumber, claimType: c.claimType } })
-    if (!existing) await prisma.claim.create({ data: c })
+    if (!existing) {
+      await prisma.claim.create({ data: c })
+    } else {
+      await prisma.claim.update({
+        where: { id: existing.id },
+        data: { assignedTo: uid }
+      })
+    }
   }
   console.log('✓ 4 Claims')
 
@@ -68,7 +120,14 @@ async function main() {
   ]
   for (const r of rtoItems) {
     const existing = await prisma.rTOWork.findFirst({ where: { vehicleNumber: r.vehicleNumber, workType: r.workType } })
-    if (!existing) await prisma.rTOWork.create({ data: r })
+    if (!existing) {
+      await prisma.rTOWork.create({ data: r })
+    } else {
+      await prisma.rTOWork.update({
+        where: { id: existing.id },
+        data: { assignedTo: uid }
+      })
+    }
   }
   console.log('✓ 3 RTO tasks')
 
@@ -80,7 +139,14 @@ async function main() {
   ]
   for (const f of fitnessItems) {
     const existing = await prisma.fitnessWork.findFirst({ where: { vehicleNumber: f.vehicleNumber } })
-    if (!existing) await prisma.fitnessWork.create({ data: f })
+    if (!existing) {
+      await prisma.fitnessWork.create({ data: f })
+    } else {
+      await prisma.fitnessWork.update({
+        where: { id: existing.id },
+        data: { assignedTo: uid }
+      })
+    }
   }
   console.log('✓ 3 Fitness tasks')
 
@@ -92,7 +158,14 @@ async function main() {
   ]
   for (const l of loanItems) {
     const existing = await prisma.loan.findFirst({ where: { customerName: l.customerName, loanType: l.loanType, amount: l.amount } })
-    if (!existing) await prisma.loan.create({ data: l })
+    if (!existing) {
+      await prisma.loan.create({ data: l })
+    } else {
+      await prisma.loan.update({
+        where: { id: existing.id },
+        data: { assignedTo: uid }
+      })
+    }
   }
   console.log('✓ 3 Loans')
 
