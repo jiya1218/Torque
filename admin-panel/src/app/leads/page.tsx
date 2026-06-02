@@ -102,7 +102,7 @@ export default function LeadsPage() {
 
       const [leadsData, statsData] = await Promise.all([
         fetchApi(`/api/v1/leads?${params}`),
-        fetchApi('/api/v1/leads/stats')
+        fetchApi(`/api/v1/leads/stats?${params}`)
       ])
       
       setLeads(leadsData.leads || [])
@@ -468,42 +468,30 @@ export default function LeadsPage() {
                         <div className="text-xs text-slate-400 mt-0.5">{lead.vehicleNo || 'Unknown vehicle'}</div>
                       </div>
                       <div className="flex items-center gap-2 ml-2" onClick={e => e.stopPropagation()}>
-                        <a 
-                          href={lead.clientPhone ? `tel:${lead.clientPhone}` : '#'}
+                        <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             if (lead.clientPhone) {
-                              if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-                                e.preventDefault();
-                                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url: `tel:${lead.clientPhone}` }));
-                              }
-                            } else {
-                              e.preventDefault();
+                              triggerNativeLink(`tel:${lead.clientPhone}`);
                             }
                           }}
                           className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
                           title="Call now"
                         >
                           <Phone size={16} />
-                        </a>
-                        <a 
-                          href={lead.clientPhone ? `https://api.whatsapp.com/send?phone=91${lead.clientPhone}` : '#'}
+                        </button>
+                        <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             if (lead.clientPhone) {
-                              if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-                                e.preventDefault();
-                                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url: `https://api.whatsapp.com/send?phone=91${lead.clientPhone}` }));
-                              }
-                            } else {
-                              e.preventDefault();
+                              triggerNativeLink(`https://api.whatsapp.com/send?phone=91${lead.clientPhone}`);
                             }
                           }}
                           className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
                           title="WhatsApp message"
                         >
                           <MessageCircle size={16} />
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </td>
@@ -775,24 +763,17 @@ export default function LeadsPage() {
                           <Clipboard size={14} />
                           {copiedText ? 'Copied!' : 'Copy Script'}
                         </button>
-                        <a 
-                          href={detailedLead.clientPhone ? `https://api.whatsapp.com/send?phone=91${detailedLead.clientPhone}&text=${encodeURIComponent(getWhatsAppText())}` : '#'}
-                          onClick={(e) => {
+                        <button 
+                          onClick={() => {
                             if (detailedLead.clientPhone) {
-                              if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-                                e.preventDefault();
-                                const url = `https://api.whatsapp.com/send?phone=91${detailedLead.clientPhone}&text=${encodeURIComponent(getWhatsAppText())}`;
-                                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url }));
-                              }
-                            } else {
-                              e.preventDefault();
+                              triggerNativeLink(`https://api.whatsapp.com/send?phone=91${detailedLead.clientPhone}&text=${encodeURIComponent(getWhatsAppText())}`);
                             }
                           }}
-                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer text-center"
+                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                         >
                           <MessageCircle size={14} />
-                          <span>Open WhatsApp</span>
-                        </a>
+                          Open WhatsApp
+                        </button>
                       </div>
                     </div>
                   )}

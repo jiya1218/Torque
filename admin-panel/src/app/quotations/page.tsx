@@ -63,7 +63,7 @@ export default function QuotationsPage() {
       const { shareUrl } = await fetchApi(`/api/v1/quotations/${id}/share`, { method: 'POST' })
       await navigator.clipboard.writeText(shareUrl)
       alert('Share link copied to clipboard!')
-      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent('Here is your insurance quotation: ' + shareUrl)}`
+      const waUrl = `https://wa.me/?text=${encodeURIComponent('Here is your insurance quotation: ' + shareUrl)}`
       
       if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url: waUrl }));
