@@ -16,7 +16,7 @@ export default function App() {
       <StatusBar style="dark" translucent={false} backgroundColor="#ffffff" />
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <WebView
-          source={{ uri: 'https://toruqfinal-admin-panel.vercel.app/login' }}
+          source={{ uri: 'https://torque-alpha.vercel.app' }}
           style={styles.webview}
           userAgent={userAgent}
           // ESSENTIAL FOR SESSIONS

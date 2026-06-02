@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Torque Admin",
-    "slug": "toque-admin-panel",
+    "slug": "torque-admin-panel",
     "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,14 +13,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.toque.admin.pro.v1"
+      "bundleIdentifier": "com.torque.admin.pro.v1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.toque.admin.pro.v1",
+      "package": "com.torque.admin.pro.v1",
       "versionCode": 8,
       "permissions": [
         "android.permission.INTERNET"
@@ -31,9 +31,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "60409540-a226-4283-8d06-6d1893593a04"
+        "projectId": "eca0ee74-3d81-4d61-a2ad-264c0cd7b923"
       }
     },
-    "owner": "jiya1289"
+    "owner": "jiya1218"
   }
 }
