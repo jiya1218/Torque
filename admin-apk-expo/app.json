@@ -2,7 +2,7 @@
   "expo": {
     "name": "Torque Admin",
     "slug": "torque-admin-panel",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.torque.admin.pro.v1",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": [
         "android.permission.INTERNET"
       ]
@@ -31,9 +31,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "eca0ee74-3d81-4d61-a2ad-264c0cd7b923"
+        "projectId": "68e67c79-b708-4de7-b927-c24f4fd97c3b"
       }
     },
-    "owner": "jiya1218"
+    "owner": "jp_10"
   }
 }

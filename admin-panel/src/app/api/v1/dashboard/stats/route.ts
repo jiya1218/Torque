@@ -85,15 +85,15 @@ export async function GET(req: NextRequest) {
       })
       const teamIds = team.map(t => t.id)
 
-      const [
-        totalLeads, activeLeads, wonLeads, lostLeads,
-        pendingFollowups, overdueFollowups,
-        totalQuotations, sentQuotations
-      ] = await Promise.all([
+      // Batch simple counts to stay well below Supabase connection pool limitations (max 15 concurrent clients)
+      const [totalLeads, activeLeads, wonLeads, lostLeads] = await Promise.all([
         prisma.lead.count({ where: { assignedTo: { in: teamIds }, createdAt: dateFilter } }),
         prisma.lead.count({ where: { assignedTo: { in: teamIds }, status: { in: ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation'] }, createdAt: dateFilter } }),
         prisma.lead.count({ where: { assignedTo: { in: teamIds }, status: 'Won', createdAt: dateFilter } }),
         prisma.lead.count({ where: { assignedTo: { in: teamIds }, status: 'Lost', createdAt: dateFilter } }),
+      ])
+
+      const [pendingFollowups, overdueFollowups, totalQuotations, sentQuotations] = await Promise.all([
         prisma.followUp.count({ where: { assignedTo: { in: teamIds }, status: 'pending', createdAt: dateFilter } }),
         prisma.followUp.count({ where: { assignedTo: { in: teamIds }, isOverdue: true, createdAt: dateFilter } }),
         prisma.quotation.count({ where: { createdBy: { in: teamIds }, createdAt: dateFilter } }),
@@ -123,22 +123,24 @@ export async function GET(req: NextRequest) {
 
 
     // ── Admin view ─────────────────────────────────
-    const [
-      totalLeads, newLeadsToday, totalPolicies, activePolicies,
-      totalQuotations, totalCalls, pendingFollowups, overdueFollowups,
-      activeClaims, pendingRto, pendingFitness, activeLoans,
-      totalCustomers, todayVisits, totalUsers
-    ] = await Promise.all([
+    // Batch counts sequentially to stay well below Supabase connection pool limitations (max 15 concurrent clients)
+    const [totalLeads, newLeadsToday, totalPolicies, activePolicies, totalQuotations] = await Promise.all([
       prisma.lead.count({ where: { createdAt: dateFilter } }),
       prisma.lead.count({ where: { createdAt: todayFilter } }),
       prisma.policy.count({ where: { createdAt: dateFilter } }),
       prisma.policy.count({ where: { status: 'Active', createdAt: dateFilter } }),
       prisma.quotation.count({ where: { createdAt: dateFilter } }),
+    ])
+
+    const [totalCalls, pendingFollowups, overdueFollowups, activeClaims, pendingRto] = await Promise.all([
       prisma.call.count({ where: { createdAt: dateFilter } }),
       prisma.followUp.count({ where: { status: 'pending', createdAt: dateFilter } }),
       prisma.followUp.count({ where: { isOverdue: true, createdAt: dateFilter } }),
       prisma.claim.count({ where: { status: { in: ['filed', 'under_review', 'approved'] }, createdAt: dateFilter } }),
       prisma.rTOWork.count({ where: { status: 'pending', createdAt: dateFilter } }),
+    ])
+
+    const [pendingFitness, activeLoans, totalCustomers, todayVisits, totalUsers] = await Promise.all([
       prisma.fitnessWork.count({ where: { status: 'pending', createdAt: dateFilter } }),
       prisma.loan.count({ where: { status: { in: ['applied', 'under_review', 'approved', 'disbursed'] }, createdAt: dateFilter } }),
       prisma.customer.count({ where: { createdAt: dateFilter } }),

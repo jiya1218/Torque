@@ -366,107 +366,197 @@ export default function OnboardingFormPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* LEFT COLUMN: Input Details */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">1. Personal & Joining Details</span>
-                
-                <div className="space-y-4">
-                  {/* Personal Mobile */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Mobile Number *</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Phone size={14} />
-                      </span>
-                      <input
-                        type="tel"
-                        required
-                        value={form.personalMobile}
-                        onChange={e => setForm({...form, personalMobile: e.target.value})}
-                        className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-xs font-medium shadow-sm"
-                        placeholder="e.g. +91 XXXXX XXXXX"
-                      />
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* LEFT COLUMN: Input Details */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">1. Personal & Joining Details</span>
+                  
+                  <div className="space-y-4">
+                    {/* Personal Mobile */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Mobile Number *</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <Phone size={14} />
+                        </span>
+                        <input
+                          type="tel"
+                          required
+                          value={form.personalMobile}
+                          onChange={e => setForm({...form, personalMobile: e.target.value})}
+                          className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-xs font-medium shadow-sm"
+                          placeholder="e.g. +91 XXXXX XXXXX"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Alternative Mobile */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Alternative Mobile</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Phone size={14} />
-                      </span>
-                      <input
-                        type="tel"
-                        value={form.homeMobile}
-                        onChange={e => setForm({...form, homeMobile: e.target.value})}
-                        className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-xs font-medium shadow-sm"
-                        placeholder="Alternative contact"
-                      />
+                    {/* Alternative Mobile */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Alternative Mobile</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <Phone size={14} />
+                        </span>
+                        <input
+                          type="tel"
+                          value={form.homeMobile}
+                          onChange={e => setForm({...form, homeMobile: e.target.value})}
+                          className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-xs font-medium shadow-sm"
+                          placeholder="Alternative contact"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Highest Qualification */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Highest Qualification *</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <GraduationCap size={14} />
-                      </span>
-                      <input
-                        type="text"
-                        required
-                        value={form.highestQualification}
-                        onChange={e => setForm({...form, highestQualification: e.target.value})}
-                        className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-xs font-medium shadow-sm"
-                        placeholder="e.g. MBA, B.Tech, MCA"
-                      />
+                    {/* Highest Qualification */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Highest Qualification *</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <GraduationCap size={14} />
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          value={form.highestQualification}
+                          onChange={e => setForm({...form, highestQualification: e.target.value})}
+                          className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none transition-all text-xs font-medium shadow-sm"
+                          placeholder="e.g. MBA, B.Tech, MCA"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Date of Birth */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Date of Birth *</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Calendar size={14} />
-                      </span>
-                      <input
-                        type="date"
-                        required
-                        value={form.dateOfBirth}
-                        onChange={e => setForm({...form, dateOfBirth: e.target.value})}
-                        className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 focus:outline-none transition-all text-xs font-medium shadow-sm"
-                      />
+                    {/* Date of Birth */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Date of Birth *</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <Calendar size={14} />
+                        </span>
+                        <input
+                          type="date"
+                          required
+                          value={form.dateOfBirth}
+                          onChange={e => setForm({...form, dateOfBirth: e.target.value})}
+                          className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 focus:outline-none transition-all text-xs font-medium shadow-sm"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Joining Date */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Requested Joining Date</label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Calendar size={14} />
-                      </span>
-                      <input
-                        type="date"
-                        value={form.joiningDate}
-                        onChange={e => setForm({...form, joiningDate: e.target.value})}
-                        className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 focus:outline-none transition-all text-xs font-medium shadow-sm"
-                      />
+                    {/* Joining Date */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Requested Joining Date</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                          <Calendar size={14} />
+                        </span>
+                        <input
+                          type="date"
+                          value={form.joiningDate}
+                          onChange={e => setForm({...form, joiningDate: e.target.value})}
+                          className="w-full bg-white border border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-500/5 rounded-xl pl-10 pr-4 py-2.5 text-slate-800 focus:outline-none transition-all text-xs font-medium shadow-sm"
+                        />
+                      </div>
                     </div>
-                  </div>
 
+                  </div>
                 </div>
               </div>
 
+              {/* RIGHT COLUMN: Document Upload Grid */}
+              <div className="lg:col-span-7 space-y-6">
+                <div className="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl h-full">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">2. Verification Credentials</span>
+                  <p className="text-[11px] text-slate-500 mb-4">Please upload scanned documents or clear photos (PNG, JPG, or PDF).</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      { type: 'adhar', label: 'Aadhaar Card' },
+                      { type: 'pan', label: 'PAN Card' },
+                      { type: 'ssc', label: 'SSC Marksheet' },
+                      { type: 'qualification', label: 'Degree Certificate' },
+                      { type: 'leaving', label: 'School Leaving Cert' },
+                      { type: 'photo', label: 'Passport Size Photo' }
+                    ].map(({ type, label }) => {
+                      const doc = docs[type]
+                      const isUploading = uploadingDoc === type
+
+                      return (
+                        <div
+                          key={type}
+                          className={`relative border rounded-2xl p-4 flex flex-col items-center justify-center h-28 bg-white hover:bg-slate-50 transition-all overflow-hidden ${
+                            doc
+                              ? 'border-emerald-200 bg-emerald-50/40'
+                              : 'border-slate-200 border-dashed hover:border-slate-300'
+                          }`}
+                        >
+                          {isUploading ? (
+                            <div className="flex flex-col items-center text-center space-y-2">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500" />
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Uploading...</span>
+                            </div>
+                          ) : doc ? (
+                            <div className="flex flex-col items-center text-center space-y-2 w-full px-2 z-10 animate-in zoom-in duration-200">
+                              <div className="h-7 w-7 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-sm">
+                                <Check size={14} />
+                              </div>
+                              <span className="text-xs font-bold text-slate-800">{label} Attached</span>
+                              <span className="text-[9px] text-slate-500 truncate max-w-full">{doc.name}</span>
+                              
+                              {/* Hover Actions Toolbar overlay */}
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <a
+                                  href={doc.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1 text-slate-500 hover:text-red-650 bg-slate-50 rounded border border-slate-200 hover:border-slate-350 transition-colors shadow-sm"
+                                  title="View Attachment"
+                                >
+                                  <Eye size={10} />
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDoc(type)}
+                                  className="p-1 text-slate-500 hover:text-red-650 bg-slate-50 rounded border border-slate-200 hover:border-slate-350 transition-colors shadow-sm"
+                                  title="Delete Attachment"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center text-center space-y-1.5 cursor-pointer z-10 w-full h-full justify-center group">
+                              <UploadCloud size={20} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+                              <span className="text-[11px] font-bold text-slate-700">{label}</span>
+                              <span className="text-[9px] text-slate-500">PDF, JPG or PNG</span>
+                              
+                              {/* Actual hidden file input */}
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                onChange={e => handleFileChange(type, e)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                disabled={submitting}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* BOTTOM SECTION: Submit Button */}
+            <div className="mt-8 flex justify-center lg:justify-end">
               <button
                 type="submit"
                 disabled={submitting || uploadingDoc !== null}
-                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-red-500/10 shadow-lg shadow-red-100 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-95 duration-200"
+                className="w-full lg:max-w-md py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all focus:ring-4 focus:ring-red-500/10 shadow-lg shadow-red-100 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01] active:scale-95 duration-200"
               >
                 {submitting ? (
                   <>
@@ -480,91 +570,6 @@ export default function OnboardingFormPage() {
                   </>
                 )}
               </button>
-
-            </div>
-
-            {/* RIGHT COLUMN: Document Upload Grid */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="p-5 bg-slate-50/50 border border-slate-100 rounded-2xl h-full">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">2. Verification Credentials</span>
-                <p className="text-[11px] text-slate-500 mb-4">Please upload scanned documents or clear photos (PNG, JPG, or PDF).</p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { type: 'adhar', label: 'Aadhaar Card' },
-                    { type: 'pan', label: 'PAN Card' },
-                    { type: 'ssc', label: 'SSC Marksheet' },
-                    { type: 'qualification', label: 'Degree Certificate' },
-                    { type: 'leaving', label: 'School Leaving Cert' },
-                    { type: 'photo', label: 'Passport Size Photo' }
-                  ].map(({ type, label }) => {
-                    const doc = docs[type]
-                    const isUploading = uploadingDoc === type
-
-                    return (
-                      <div
-                        key={type}
-                        className={`relative border rounded-2xl p-4 flex flex-col items-center justify-center h-28 bg-white hover:bg-slate-50 transition-all overflow-hidden ${
-                          doc
-                            ? 'border-emerald-200 bg-emerald-50/40'
-                            : 'border-slate-200 border-dashed hover:border-slate-300'
-                        }`}
-                      >
-                        {isUploading ? (
-                          <div className="flex flex-col items-center text-center space-y-2">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500" />
-                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Uploading...</span>
-                          </div>
-                        ) : doc ? (
-                          <div className="flex flex-col items-center text-center space-y-2 w-full px-2 z-10 animate-in zoom-in duration-200">
-                            <div className="h-7 w-7 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-sm">
-                              <Check size={14} />
-                            </div>
-                            <span className="text-xs font-bold text-slate-800">{label} Attached</span>
-                            <span className="text-[9px] text-slate-500 truncate max-w-full">{doc.name}</span>
-                            
-                            {/* Hover Actions Toolbar overlay */}
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <a
-                                href={doc.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1 text-slate-500 hover:text-red-650 bg-slate-50 rounded border border-slate-200 hover:border-slate-350 transition-colors shadow-sm"
-                                title="View Attachment"
-                              >
-                                <Eye size={10} />
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveDoc(type)}
-                                className="p-1 text-slate-500 hover:text-red-650 bg-slate-50 rounded border border-slate-200 hover:border-slate-350 transition-colors shadow-sm"
-                                title="Delete Attachment"
-                              >
-                                <Trash2 size={10} />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center text-center space-y-1.5 cursor-pointer z-10 w-full h-full justify-center group">
-                            <UploadCloud size={20} className="text-slate-400 group-hover:text-red-500 transition-colors" />
-                            <span className="text-[11px] font-bold text-slate-700">{label}</span>
-                            <span className="text-[9px] text-slate-500">PDF, JPG or PNG</span>
-                            
-                            {/* Actual hidden file input */}
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              onChange={e => handleFileChange(type, e)}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              disabled={submitting}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
 
           </form>

@@ -459,23 +459,27 @@ export default function LeadsPage() {
                         <div className="font-bold text-slate-900 text-sm">{lead.clientName}</div>
                         <div className="text-xs text-slate-400 mt-0.5">{lead.vehicleNo || 'Unknown vehicle'}</div>
                       </div>
-                      <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
-                        <a 
-                          href={`tel:${lead.clientPhone}`}
-                          className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors shadow-sm"
-                          title="Call now"
-                        >
-                          <Phone size={12} />
-                        </a>
-                        <a 
-                          href={`https://wa.me/91${lead.clientPhone}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
-                          title="WhatsApp message"
-                        >
-                          <MessageCircle size={12} />
-                        </a>
+                      <div className="flex items-center gap-2 ml-2" onClick={e => e.stopPropagation()}>
+                        {lead.clientPhone && (
+                          <a
+                            href={`tel:${lead.clientPhone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
+                            title="Call now"
+                          >
+                            <Phone size={20} />
+                          </a>
+                        )}
+                        {lead.clientPhone && (
+                          <a
+                            href={`https://api.whatsapp.com/send?phone=91${lead.clientPhone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
+                            title="WhatsApp message"
+                          >
+                            <MessageCircle size={20} />
+                          </a>
+                        )}
                       </div>
                     </div>
                   </td>

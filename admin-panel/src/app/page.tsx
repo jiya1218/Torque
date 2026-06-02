@@ -187,21 +187,21 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, icon: Icon, color, bg }: any) {
   return (
-    <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 group">
-      <div className={`w-14 h-14 ${bg} ${color} rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
-        <Icon size={28} />
+    <div className="bg-white p-3 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 group">
+      <div className={`w-8 h-8 md:w-12 md:h-12 ${bg} ${color} rounded-lg md:rounded-2xl flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300`}>
+        <Icon className="w-4 h-4 md:w-6 md:h-6" />
       </div>
-      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1.5">{label}</p>
-      <p className="text-4xl font-black text-gray-900">{value || 0}</p>
+      <p className="text-[8px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5 md:mb-1">{label}</p>
+      <p className="text-lg md:text-3xl font-black text-gray-900">{value || 0}</p>
     </div>
   )
 }
 
 function PipelineBar({ pipeline }: any) {
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-      <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-        <TrendingUp className="text-red-600" size={24} />
+    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm">
+      <h3 className="text-base md:text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+        <TrendingUp className="text-red-600" size={20} />
         Sales Pipeline Distribution
       </h3>
       <div className="flex h-4 w-full rounded-full overflow-hidden bg-gray-100 shadow-inner mb-6">
@@ -230,9 +230,9 @@ function PipelineBar({ pipeline }: any) {
 
 function TeamList({ team }: any) {
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-      <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-        <Users2 className="text-blue-600" size={24} />
+    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm">
+      <h3 className="text-base md:text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+        <Users2 className="text-blue-600" size={20} />
         Team Activity Oversight
       </h3>
       <div className="overflow-x-auto">
