@@ -34,6 +34,14 @@ export default function LeadsPage() {
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
   const initialSearch = searchParams?.get('search') || ''
 
+  const triggerNativeLink = (url: string) => {
+    if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url }));
+    } else {
+      window.location.href = url;
+    }
+  }
+
   const [leads, setLeads] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [employees, setEmployees] = useState<any[]>([])
@@ -460,26 +468,42 @@ export default function LeadsPage() {
                         <div className="text-xs text-slate-400 mt-0.5">{lead.vehicleNo || 'Unknown vehicle'}</div>
                       </div>
                       <div className="flex items-center gap-2 ml-2" onClick={e => e.stopPropagation()}>
-                        {lead.clientPhone && (
-                          <a
-                            href={`tel:${lead.clientPhone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
-                            title="Call now"
-                          >
-                            <Phone size={20} />
-                          </a>
-                        )}
-                        {lead.clientPhone && (
-                          <a
-                            href={`https://api.whatsapp.com/send?phone=91${lead.clientPhone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
-                            title="WhatsApp message"
-                          >
-                            <MessageCircle size={20} />
-                          </a>
-                        )}
+                        <a 
+                          href={lead.clientPhone ? `tel:${lead.clientPhone}` : '#'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (lead.clientPhone) {
+                              if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+                                e.preventDefault();
+                                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url: `tel:${lead.clientPhone}` }));
+                              }
+                            } else {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
+                          title="Call now"
+                        >
+                          <Phone size={16} />
+                        </a>
+                        <a 
+                          href={lead.clientPhone ? `https://api.whatsapp.com/send?phone=91${lead.clientPhone}` : '#'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (lead.clientPhone) {
+                              if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+                                e.preventDefault();
+                                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url: `https://api.whatsapp.com/send?phone=91${lead.clientPhone}` }));
+                              }
+                            } else {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95"
+                          title="WhatsApp message"
+                        >
+                          <MessageCircle size={16} />
+                        </a>
                       </div>
                     </div>
                   </td>
@@ -752,13 +776,22 @@ export default function LeadsPage() {
                           {copiedText ? 'Copied!' : 'Copy Script'}
                         </button>
                         <a 
-                          href={`https://api.whatsapp.com/send?phone=91${detailedLead.clientPhone}&text=${encodeURIComponent(getWhatsAppText())}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                          href={detailedLead.clientPhone ? `https://api.whatsapp.com/send?phone=91${detailedLead.clientPhone}&text=${encodeURIComponent(getWhatsAppText())}` : '#'}
+                          onClick={(e) => {
+                            if (detailedLead.clientPhone) {
+                              if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+                                e.preventDefault();
+                                const url = `https://api.whatsapp.com/send?phone=91${detailedLead.clientPhone}&text=${encodeURIComponent(getWhatsAppText())}`;
+                                (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'open_url', url }));
+                              }
+                            } else {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer text-center"
                         >
                           <MessageCircle size={14} />
-                          Open WhatsApp
+                          <span>Open WhatsApp</span>
                         </a>
                       </div>
                     </div>

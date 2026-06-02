@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light !important;
 }
 
 @theme inline {
@@ -19,24 +20,18 @@
   --color-brand-gray: #939598;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #ffffff !important;
+  color: #111827 !important;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Ensure all form inputs have black text and visible placeholders */
+/* Force all text inputs, textareas, and select dropdowns to use solid black text when entering details */
 input, select, textarea {
-  color: #111827 !important; /* text-gray-900 */
+  color: #000000 !important;
 }
 
+/* Make sure placeholders are a readable gray */
 input::placeholder, textarea::placeholder {
-  color: #9ca3af !important; /* text-gray-400 — visible on both white and gray backgrounds */
+  color: #9ca3af !important; /* text-gray-400 */
 }

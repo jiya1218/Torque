@@ -24,17 +24,16 @@ export async function GET(req: NextRequest) {
 
     const totalLeads = await prisma.lead.count({ where })
     
-    // For executives, 'where' already includes 'assignedTo: userId', 
-    // so adding 'assignedTo: { not: null }' would OVERRIDE it and count ALL assigned leads.
-    // We need to preserve the existing assignedTo filter.
-    
-    const assignedLeads = isExecutive
-      ? totalLeads  // All of an executive's leads are by definition assigned to them
-      : await prisma.lead.count({ where: { ...where, assignedTo: { not: null } } })
-    
-    const unassignedLeads = isExecutive
-      ? 0  // An executive has no unassigned leads (they only see their own)
-      : await prisma.lead.count({ where: { ...where, assignedTo: null } })
+    let assignedLeads = 0
+    let unassignedLeads = 0
+    if (where.assignedTo) {
+      // If we are filtering by specific assigned user(s), they are all assigned leads
+      assignedLeads = totalLeads
+      unassignedLeads = 0
+    } else {
+      assignedLeads = await prisma.lead.count({ where: { ...where, assignedTo: { not: null } } })
+      unassignedLeads = await prisma.lead.count({ where: { ...where, assignedTo: null } })
+    }
     
     const convertedLeads = await prisma.lead.count({ where: { ...where, status: 'Converted' } })
     const pendingFollowups = await prisma.lead.count({ where: { ...where, status: { in: ['Follow Up', 'Follow-up'] } } })

@@ -89,7 +89,7 @@ export default function Sidebar() {
       {/* Mobile hamburger button */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-0 left-0 z-50 p-3 m-1 bg-white rounded-xl shadow-md border border-gray-200 md:hidden"
+        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-xl shadow-md border border-gray-200 md:hidden"
         aria-label="Open menu"
       >
         <Menu size={22} />
@@ -112,7 +112,7 @@ export default function Sidebar() {
       `}>
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Torque Auto Advisor" className="h-12 w-auto object-contain mix-blend-multiply" />
+            <img src="/logo.png?v=2" alt="Torque Auto Advisor" className="h-12 w-auto object-contain" />
           </div>
           <button onClick={() => setOpen(false)} className="md:hidden p-1 hover:bg-gray-100 rounded-lg">
             <X size={20} />

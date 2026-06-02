@@ -187,12 +187,12 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, icon: Icon, color, bg }: any) {
   return (
-    <div className="bg-white p-3 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 group">
-      <div className={`w-8 h-8 md:w-12 md:h-12 ${bg} ${color} rounded-lg md:rounded-2xl flex items-center justify-center mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300`}>
-        <Icon className="w-4 h-4 md:w-6 md:h-6" />
+    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 group">
+      <div className={`w-10 h-10 md:w-12 md:h-12 ${bg} ${color} rounded-xl md:rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
+        <Icon className="w-5 h-5 md:w-6 md:h-6" />
       </div>
-      <p className="text-[8px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5 md:mb-1">{label}</p>
-      <p className="text-lg md:text-3xl font-black text-gray-900">{value || 0}</p>
+      <p className="text-[9px] md:text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xl md:text-3xl font-black text-gray-900">{value || 0}</p>
     </div>
   )
 }
