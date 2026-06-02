@@ -20,6 +20,8 @@ model User {
   joiningDate          DateTime?
   personalMobile       String?
   homeMobile           String?
+  onboardingRemark     String?
+  onboardingUpdated    Boolean             @default(false)
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
   managerId             String?             @db.Uuid

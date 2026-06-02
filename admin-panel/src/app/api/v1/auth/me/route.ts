@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
   console.log('[auth/me] GET request received');
-  const { context, error } = await validateAuth(req)
+  const { context, error } = await validateAuth(req, undefined, true)
   if (error) return error
 
   try {

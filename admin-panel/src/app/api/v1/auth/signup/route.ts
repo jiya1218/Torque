@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         fullName,
         roleId: role?.id || null,
         managerId: managerId || null,
-        isActive: true // Active immediately for test ease
+        isActive: false // Pending onboarding and admin approval by default
       },
       create: {
         id: authData.user.id,
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         fullName,
         roleId: role?.id || null,
         managerId: managerId || null,
-        isActive: true // Active immediately for test ease
+        isActive: false // Pending onboarding and admin approval by default
       }
     })
 

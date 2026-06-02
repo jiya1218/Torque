@@ -38,6 +38,11 @@ export default function Header() {
         </button>
         <div className="h-8 w-px bg-gray-200 mx-1 hidden md:block"></div>
         <div className="flex items-center gap-2 md:gap-4">
+          {user?.isActive === false && (
+            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider border border-amber-200 rounded-xl animate-pulse flex items-center gap-1 shrink-0">
+              ⏳ Pending Approval
+            </span>
+          )}
           <button className="flex items-center gap-2 p-1 pr-3 hover:bg-gray-100 rounded-full transition-colors">
             <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white">
               {user?.fullName?.charAt(0) || '👤'}

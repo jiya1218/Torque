@@ -34,15 +34,22 @@ export default function AdminLayout({
             const response = await fetch('/api/v1/onboarding/check-form-status', {
               headers: { 'Authorization': `Bearer ${session.access_token}` }
             })
+            
+            let requiresForm = false
             if (response.ok) {
               const data = await response.json()
-              if (data.requiresForm) {
-                router.push('/onboarding/form')
-                return
-              }
+              requiresForm = data.requiresForm
+            }
+
+            const roleName = user.role?.name?.toUpperCase() || ''
+            const isAdmin = roleName === 'SUPER ADMIN' || roleName === 'ADMIN'
+
+            if (!isAdmin && requiresForm) {
+              window.location.href = '/onboarding/form'
+              return
             }
           } catch (err) {
-            console.error('Error checking onboarding form status:', err)
+            console.error('Error checking onboarding status:', err)
           }
           setCheckingForm(false)
         }

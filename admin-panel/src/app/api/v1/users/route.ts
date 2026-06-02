@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
       queryArgs.include = {
         role: { select: { id: true, name: true } },
         manager: { select: { id: true, fullName: true } },
-        permissions: { select: { id: true, name: true } }
+        permissions: { select: { id: true, name: true } },
+        documents: true
       }
     }
 

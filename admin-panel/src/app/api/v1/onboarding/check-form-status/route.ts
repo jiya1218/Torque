@@ -24,8 +24,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ requiresForm: false })
     }
 
-    // Check if the required personal details are missing
-    let requiresForm = !user.highestQualification || !user.personalMobile || !user.dateOfBirth
+    // Check if the required personal details are missing (only for inactive/new joiners)
+    // Existing active staff members never need to fill out the onboarding form
+    // Also require form re-submission if an admin remark exists.
+    let requiresForm = false
+    if (!user.isActive) {
+      requiresForm = !user.highestQualification || !user.personalMobile || !user.dateOfBirth || !!user.onboardingRemark
+    }
 
     // If details are missing, check the Google Sheets responses sheet if URL is configured
     const sheetUrl = process.env.GOOGLE_SHEET_RESPONSES_URL
@@ -90,7 +95,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ requiresForm })
+    return NextResponse.json({ requiresForm, onboardingRemark: user.onboardingRemark })
   } catch (error: any) {
     console.error('[check-form-status] GET Error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

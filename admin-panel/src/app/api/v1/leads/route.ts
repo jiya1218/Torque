@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     // RBAC: Dynamic filtering based on role
     const roleUpper = context?.role?.toUpperCase() || ''
-    const isExecutive = roleUpper.endsWith('EXECUTIVE') || roleUpper === 'TELECALLER' || roleUpper === 'VIEWER'
+    const isExecutive = roleUpper.endsWith('EXECUTIVE') || roleUpper === 'VIEWER'
     
     if (isExecutive) {
       where.assignedTo = context!.userId

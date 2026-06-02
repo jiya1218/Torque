@@ -6,6 +6,7 @@ interface UserProfile {
   id: string
   email: string
   fullName: string
+  isActive?: boolean
   role?: {
     name: string
     permissions: Array<{ name: string }>

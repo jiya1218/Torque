@@ -3,7 +3,7 @@
 
 # Other workspace packages (not needed for mobile build)
 admin-panel/
-admin-apk-expo/
+# admin-apk-expo/ (Must be uploaded for the EAS build of the admin panel APK!)
 admin-apk/
 api_temp/
 

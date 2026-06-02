@@ -50,9 +50,10 @@ export async function validateAuth(
       return { error: NextResponse.json({ error: 'User profile not found' }, { status: 404 }) }
     }
 
-    if (!profile.isActive && !allowInactive) {
-      return { error: NextResponse.json({ error: 'User account is deactivated' }, { status: 403 }) }
-    }
+    // Allow pending/inactive users to successfully access the dashboard and APIs
+    // if (!profile.isActive && !allowInactive) {
+    //   return { error: NextResponse.json({ error: 'User account is deactivated' }, { status: 403 }) }
+    // }
 
     // Merge role permissions + individual extra permissions (deduplicated)
     const rolePermNames = profile.role?.permissions.map(p => p.name) || []

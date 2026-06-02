@@ -45,7 +45,7 @@ const PERMISSIONS = [
 ]
 
 const ROLES = [
-  "Super Admin", "Admin", "Manager", "Sales Executive", "Telecaller", "Field Executive", "RTO Executive",
+  "Super Admin", "Admin", "Manager", "Sales Executive", "Field Executive", "RTO Executive",
   "Claims Executive", "Loan Executive", "CRM Executive", "Accountant", "HR Manager", "Viewer"
 ]
 
@@ -108,12 +108,7 @@ async function main() {
       "data.view",
     ],
 
-    "Telecaller": [
-      "dashboard.view_agent",
-      "lead.view", "lead.create", "lead.change_status",
-      "crm.view", "crm.manage_followups",
-      "notification.view",
-    ],
+
 
     "Field Executive": [
       "dashboard.view_agent",

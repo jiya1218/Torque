@@ -17,9 +17,12 @@ export async function POST(req: NextRequest) {
       documents // Array of { type: string, url: string }
     } = body
 
-    if (!highestQualification || !dateOfBirth || !personalMobile) {
-      return NextResponse.json({ error: 'highestQualification, dateOfBirth, and personalMobile are required' }, { status: 400 })
-    }
+    // Check if the user previously had a revision remark from the admin
+    const existingUser = await prisma.user.findUnique({
+      where: { id: context!.userId },
+      select: { onboardingRemark: true }
+    })
+    const hadRemark = !!existingUser?.onboardingRemark
 
     // Update user profile
     const user = await prisma.user.update({
@@ -30,9 +33,12 @@ export async function POST(req: NextRequest) {
         joiningDate: joiningDate ? new Date(joiningDate) : null,
         personalMobile,
         homeMobile,
+        onboardingRemark: null,
+        onboardingUpdated: hadRemark,
         documents: documents?.length ? {
           create: documents.map((doc: any) => ({
             entityType: 'User',
+            entityId: context!.userId,
             fileName: doc.type,
             filePath: doc.url
           }))

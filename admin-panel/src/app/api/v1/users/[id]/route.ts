@@ -13,7 +13,8 @@ export async function GET(
       where: { id },
       include: {
         role: { include: { permissions: true } },
-        permissions: true
+        permissions: true,
+        documents: true
       }
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -42,6 +43,8 @@ export async function PATCH(
         ...(roleId !== undefined && { roleId: roleId || null }),
         ...(managerId !== undefined && { managerId: managerId || null }),
         ...(isActive !== undefined && { isActive }),
+        ...(isActive === true && { onboardingUpdated: false }),
+        ...(body.onboardingRemark !== undefined && { onboardingRemark: body.onboardingRemark, onboardingUpdated: false }),
         ...(body.restore === true && { deletedAt: null, isActive: true }),
         ...(extraPermissionIds !== undefined && {
           permissions: {

@@ -58,7 +58,7 @@ export default function Sidebar() {
   useEffect(() => { setOpen(false) }, [pathname])
 
   const role = (user?.role?.name || 'EXECUTIVE').toUpperCase()
-  const isExecutive = role.endsWith('EXECUTIVE') || role === 'TELECALLER' || role === 'VIEWER'
+  const isExecutive = role.endsWith('EXECUTIVE') || role === 'VIEWER'
 
   const filteredGroups = MENU_GROUPS.map(group => {
     let items = group.items
@@ -150,6 +150,11 @@ export default function Sidebar() {
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Logged in as</p>
             <p className="text-xs font-bold text-gray-700 truncate">{user?.fullName || 'User'}</p>
             <p className="text-[10px] font-medium text-red-600 uppercase">{role}</p>
+            {user?.isActive === false && (
+              <span className="inline-block mt-2 px-2 py-0.5 bg-amber-50 text-amber-700 text-[9px] font-black uppercase tracking-wider border border-amber-200 rounded-lg animate-pulse">
+                ⏳ Pending Approval
+              </span>
+            )}
           </div>
           <button 
             onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')}
