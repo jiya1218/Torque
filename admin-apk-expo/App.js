@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { StyleSheet, View, Platform, StatusBar as RNStatusBar, Linking, BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +8,9 @@ function MainApp() {
   const webViewRef = useRef(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const insets = useSafeAreaInsets();
+
+  // Top spacing based on platform to prevent overlays
+  const topPadding = Platform.OS === 'ios' ? insets.top : (RNStatusBar.currentHeight ?? 24);
 
   // Handle hardware back button press on Android
   useEffect(() => {
@@ -19,9 +22,9 @@ function MainApp() {
       return false; // Let OS handle back press (exit app)
     };
 
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => {
-      BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+      subscription.remove();
     };
   }, [canGoBack]);
 
@@ -32,6 +35,7 @@ function MainApp() {
 
   // Deep link launcher with WhatsApp scheme converter
   const launchNativeURL = (url) => {
+    if (!url || typeof url !== 'string') return;
     let targetUrl = url;
     
     // If it's a WhatsApp web/HTTP link, rewrite to whatsapp:// send scheme for mobile apps
@@ -61,7 +65,7 @@ function MainApp() {
   };
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.container, { paddingTop: topPadding, paddingBottom: insets.bottom }]}>
       {/* Make status bar translucent and transparent so content/header flows to the top under it */}
       <StatusBar style="dark" translucent={true} backgroundColor="transparent" />
       <WebView
@@ -96,7 +100,8 @@ function MainApp() {
         }}
         // INTERCEPT EXTERNAL PROTOCOLS (CALL, SMS, WHATSAPP, EMAIL)
         onShouldStartLoadWithRequest={(request) => {
-          const { url } = request;
+          const url = request?.url;
+          if (!url) return true;
           
           if (
             url.startsWith('tel:') ||
