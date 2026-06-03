@@ -83,6 +83,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm text-gray-900 font-medium"
                   placeholder="admin@toque.in"
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -105,6 +106,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm text-gray-900 font-medium"
                   placeholder="••••••••"
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -122,6 +124,7 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-md shadow-red-200 text-sm font-bold text-white bg-brand-primary hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                suppressHydrationWarning
               >
                 {loading ? 'Signing in...' : 'Sign in'}
                 {!loading && <ArrowRight size={18} />}

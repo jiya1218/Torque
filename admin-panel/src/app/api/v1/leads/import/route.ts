@@ -124,22 +124,55 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // 2. Fetch Active Employees
-    let employees = await prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true }
+    // 2. Fetch Active Sales Executives
+    const salesExecutives = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: {
+          name: {
+            equals: 'Sales Executive',
+            mode: 'insensitive'
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      },
+      select: {
+        id: true
+      }
     })
 
-    if (employees.length === 0) {
+    if (salesExecutives.length === 0) {
       return NextResponse.json({ 
-        error: 'No active users found to assign leads to.',
+        error: 'No active Sales Executives found to assign leads to.',
         stats: { total: rawData.length, valid: validLeads.length, errors: errorRows.length }
       }, { status: 400 })
     }
 
+    // Find the last assigned lead to continue the round-robin sequence from where it left off
+    const lastAssignedLead = await prisma.lead.findFirst({
+      where: {
+        assignedTo: { not: null }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    let nextIndex = 0
+    if (lastAssignedLead && lastAssignedLead.assignedTo) {
+      const lastId = lastAssignedLead.assignedTo
+      const foundIndex = salesExecutives.findIndex(se => se.id === lastId)
+      if (foundIndex !== -1) {
+        nextIndex = (foundIndex + 1) % salesExecutives.length
+      }
+    }
+
     // 3. Round Robin Assignment
-    const leadsWithAssignment = validLeads.map((lead, index) => {
-      const assignee = employees[index % employees.length]
+    const leadsWithAssignment = validLeads.map((lead) => {
+      const assignee = salesExecutives[nextIndex]
+      nextIndex = (nextIndex + 1) % salesExecutives.length
       return {
         ...lead,
         assignedTo: assignee.id

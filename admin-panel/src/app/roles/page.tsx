@@ -12,6 +12,7 @@ import {
 const GROUP_LABELS: Record<string, string> = {
   auth: 'Authentication & Security',
   role: 'Role & Permission Management',
+  user: 'Staff & User Management',
   lead: 'Lead Management',
   rate: 'Rate Calculator',
   rto: 'RTO Work Management',
@@ -32,7 +33,7 @@ const GROUP_LABELS: Record<string, string> = {
 }
 
 const GROUP_ICONS: Record<string, string> = {
-  auth: '🔐', role: '🛡️', lead: '📋', rate: '💰', rto: '🚗',
+  auth: '🔐', role: '🛡️', user: '👥', lead: '📋', rate: '💰', rto: '🚗',
   vahan: '🚘', fitness: '🔧', claims: '📄', accounts: '💳', hr: '👥',
   loan: '🏦', crm: '🤝', visit: '📍', data: '🗄️',
   quotation: '📊', dashboard: '📈', notification: '🔔',
@@ -40,7 +41,7 @@ const GROUP_ICONS: Record<string, string> = {
 }
 
 const GROUP_ORDER = [
-  'auth', 'role', 'lead', 'rate', 'rto', 'vahan', 'fitness', 'claims',
+  'auth', 'role', 'user', 'lead', 'rate', 'rto', 'vahan', 'fitness', 'claims',
   'accounts', 'hr', 'loan', 'crm', 'visit', 'data', 'quotation',
   'dashboard', 'notification', 'template', 'system',
 ]
@@ -110,8 +111,16 @@ export default function RolesPage() {
     }
   }, [authLoading, token]) // eslint-disable-line
 
-  const togglePermission = (id: string) =>
-    setRolePermissions(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
+  const toggleUnifiedPermission = (p: any) => {
+    const allOn = p.ids.every((id: string) => rolePermissions.includes(id))
+    setRolePermissions(prev => {
+      if (allOn) {
+        return prev.filter(id => !p.ids.includes(id))
+      } else {
+        return [...new Set([...prev, ...p.ids])]
+      }
+    })
+  }
 
   const handleSave = async () => {
     if (!selectedRole) return
@@ -170,10 +179,60 @@ export default function RolesPage() {
     fetchData()
   }
 
+  // Group and unify duplicate permissions
+  const unifiedPermissions = React.useMemo(() => {
+    const map: Record<string, {
+      key: string
+      displayName: string
+      group: string
+      ids: string[]
+      names: string[]
+      description: string
+    }> = {}
+
+    permissions.forEach(p => {
+      const parts = p.name.split('.')
+      let group = parts[0]
+      let action = parts.slice(1).join('.')
+
+      // Normalize group names to merge duplicates
+      if (group === 'leads') group = 'lead'
+      if (group === 'quotations') group = 'quotation'
+      if (group === 'roles') group = 'role'
+      if (group === 'settings') group = 'system'
+      if (group === 'users') group = 'user'
+
+      // Normalize action names
+      if (action === 'settings_manage' || action === 'manage') {
+        if (group === 'system' || group === 'setting') {
+          action = 'settings_manage'
+        }
+      }
+
+      const key = `${group}.${action}`
+
+      if (!map[key]) {
+        map[key] = {
+          key,
+          displayName: action.replace(/_/g, ' '),
+          group,
+          ids: [],
+          names: [],
+          description: p.description || ''
+        }
+      }
+
+      map[key].ids.push(p.id)
+      map[key].names.push(p.name)
+    })
+
+    return Object.values(map)
+  }, [permissions])
+
   // Build permission groups
   const groups: Record<string, any[]> = {}
-  permissions.forEach(p => {
-    const g = p.name.split('.')[0]
+  unifiedPermissions.forEach(p => {
+    const g = p.group
     if (!groups[g]) groups[g] = []
     groups[g].push(p)
   })
@@ -186,7 +245,10 @@ export default function RolesPage() {
   const filteredGroups = orderedGroups.filter(g =>
     !searchQuery ||
     (GROUP_LABELS[g] || g).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    groups[g]?.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    groups[g]?.some(p => 
+      p.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.names.some((n: string) => n.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
   )
 
   const toggleGroup = (g: string) =>
@@ -194,9 +256,10 @@ export default function RolesPage() {
 
   const toggleAllInGroup = (g: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    const ids = groups[g].map((p: any) => p.id)
-    const allOn = ids.every((id: string) => rolePermissions.includes(id))
-    setRolePermissions(prev => allOn ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])])
+    const groupPerms = groups[g] || []
+    const allIds = groupPerms.flatMap((p: any) => p.ids)
+    const allOn = allIds.every((id: string) => rolePermissions.includes(id))
+    setRolePermissions(prev => allOn ? prev.filter(id => !allIds.includes(id)) : [...new Set([...prev, ...allIds])])
   }
 
   if (authLoading) {
@@ -351,7 +414,7 @@ export default function RolesPage() {
                     <div>
                       <p className="text-sm font-bold text-gray-900">{selectedRole.name}</p>
                       <p className="text-xs text-gray-500">
-                        {rolePermissions.length} / {permissions.length} permissions selected
+                        {unifiedPermissions.filter((p: any) => p.ids.every((id: string) => rolePermissions.includes(id))).length} / {unifiedPermissions.length} permissions selected
                       </p>
                     </div>
                   </div>
@@ -395,7 +458,7 @@ export default function RolesPage() {
                   ) : filteredGroups.map(group => {
                     const isExpanded = expandedGroups.includes(group) || !!searchQuery
                     const groupPerms = groups[group] || []
-                    const selectedCount = groupPerms.filter((p: any) => rolePermissions.includes(p.id)).length
+                    const selectedCount = groupPerms.filter((p: any) => p.ids.every((id: string) => rolePermissions.includes(id))).length
                     const allOn = selectedCount === groupPerms.length && groupPerms.length > 0
 
                     return (
@@ -451,11 +514,11 @@ export default function RolesPage() {
                         {isExpanded && (
                           <div className="px-5 pb-5 pt-3 border-t border-gray-50 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
                             {groupPerms.map((p: any) => {
-                              const on = rolePermissions.includes(p.id)
+                              const on = p.ids.every((id: string) => rolePermissions.includes(id))
                               return (
                                 <div
-                                  key={p.id}
-                                  onClick={() => togglePermission(p.id)}
+                                  key={p.key}
+                                  onClick={() => toggleUnifiedPermission(p)}
                                   className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer select-none transition-all ${
                                     on
                                       ? 'bg-blue-50 border-blue-200'
@@ -468,9 +531,11 @@ export default function RolesPage() {
                                   }
                                   <div className="min-w-0">
                                     <p className={`text-sm font-semibold truncate capitalize ${on ? 'text-blue-800' : 'text-gray-700'}`}>
-                                      {p.name.split('.').slice(1).join('.').replace(/_/g, ' ')}
+                                      {p.displayName}
                                     </p>
-                                    <p className="text-[10px] text-gray-400 font-mono truncate">{p.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-mono truncate">
+                                      {p.names.join(', ')}
+                                    </p>
                                   </div>
                                 </div>
                               )

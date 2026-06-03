@@ -17,6 +17,43 @@ export async function POST(req: NextRequest) {
     let importedCount = 0
     let updatedCount = 0
 
+    // Fetch all active Sales Executives
+    const salesExecutives = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: {
+          name: {
+            equals: 'Sales Executive',
+            mode: 'insensitive'
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    })
+
+    // Find the last assigned lead to continue the round-robin sequence from where it left off
+    const lastAssignedLead = await prisma.lead.findFirst({
+      where: {
+        assignedTo: { not: null }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    let nextIndex = 0
+    if (salesExecutives.length > 0) {
+      if (lastAssignedLead && lastAssignedLead.assignedTo) {
+        const lastId = lastAssignedLead.assignedTo
+        const foundIndex = salesExecutives.findIndex(se => se.id === lastId)
+        if (foundIndex !== -1) {
+          nextIndex = (foundIndex + 1) % salesExecutives.length
+        }
+      }
+    }
+
     // Process leads sequentially to ensure unique checks
     for (const item of leads) {
       const {
@@ -53,6 +90,13 @@ export async function POST(req: NextRequest) {
       }
 
       if (existingLead) {
+        // If the existing lead doesn't have an assignee, assign it using round-robin
+        let assignedToUpdate = existingLead.assignedTo
+        if (!assignedToUpdate && salesExecutives.length > 0) {
+          assignedToUpdate = salesExecutives[nextIndex].id
+          nextIndex = (nextIndex + 1) % salesExecutives.length
+        }
+
         // Update existing lead
         await prisma.lead.update({
           where: { id: existingLead.id },
@@ -66,11 +110,19 @@ export async function POST(req: NextRequest) {
             gvw: gvwStr || existingLead.gvw,
             address: addressStr || existingLead.address,
             city: cityStr || existingLead.city,
+            assignedTo: assignedToUpdate,
             updatedAt: new Date()
           }
         })
         updatedCount++
       } else {
+        // Assign new lead using round-robin
+        let assignedToNew = null
+        if (salesExecutives.length > 0) {
+          assignedToNew = salesExecutives[nextIndex].id
+          nextIndex = (nextIndex + 1) % salesExecutives.length
+        }
+
         // Create new lead
         await prisma.lead.create({
           data: {
@@ -83,7 +135,8 @@ export async function POST(req: NextRequest) {
             gvw: gvwStr,
             address: addressStr,
             city: cityStr,
-            status: 'New'
+            status: 'New',
+            assignedTo: assignedToNew
           }
         })
         importedCount++
