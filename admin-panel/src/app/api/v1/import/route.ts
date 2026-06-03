@@ -24,7 +24,15 @@ export async function POST(req: NextRequest) {
         expiryDate, registrationDate, gvw, address, city
       } = item
 
-      if (!clientName) continue // Name is required in schema
+      const clientNameStr = clientName ? String(clientName).trim() : ''
+      if (!clientNameStr) continue // Name is required in schema
+
+      const clientPhoneStr = clientPhone ? String(clientPhone).trim() : null
+      const clientEmailStr = clientEmail ? String(clientEmail).trim() : null
+      const vehicleNoStr = vehicleNo ? String(vehicleNo).trim() : null
+      const gvwStr = gvw ? String(gvw).trim() : null
+      const addressStr = address ? String(address).trim() : null
+      const cityStr = city ? String(city).trim() : null
 
       const parsedExpiry = expiryDate ? new Date(expiryDate) : null
       const parsedRegDate = registrationDate ? new Date(registrationDate) : null
@@ -32,15 +40,15 @@ export async function POST(req: NextRequest) {
       // Check if a Lead already exists with the same vehicle registration number or client phone
       let existingLead = null
 
-      if (vehicleNo) {
+      if (vehicleNoStr) {
         existingLead = await prisma.lead.findFirst({
-          where: { vehicleNo: { equals: vehicleNo, mode: 'insensitive' } }
+          where: { vehicleNo: { equals: vehicleNoStr, mode: 'insensitive' } }
         })
       }
 
-      if (!existingLead && clientPhone) {
+      if (!existingLead && clientPhoneStr) {
         existingLead = await prisma.lead.findFirst({
-          where: { clientPhone: { equals: clientPhone } }
+          where: { clientPhone: { equals: clientPhoneStr } }
         })
       }
 
@@ -49,15 +57,15 @@ export async function POST(req: NextRequest) {
         await prisma.lead.update({
           where: { id: existingLead.id },
           data: {
-            clientName,
-            clientEmail: clientEmail || existingLead.clientEmail,
-            clientPhone: clientPhone || existingLead.clientPhone,
-            vehicleNo: vehicleNo || existingLead.vehicleNo,
+            clientName: clientNameStr,
+            clientEmail: clientEmailStr || existingLead.clientEmail,
+            clientPhone: clientPhoneStr || existingLead.clientPhone,
+            vehicleNo: vehicleNoStr || existingLead.vehicleNo,
             expiryDate: parsedExpiry || existingLead.expiryDate,
             registrationDate: parsedRegDate || existingLead.registrationDate,
-            gvw: gvw || existingLead.gvw,
-            address: address || existingLead.address,
-            city: city || existingLead.city,
+            gvw: gvwStr || existingLead.gvw,
+            address: addressStr || existingLead.address,
+            city: cityStr || existingLead.city,
             updatedAt: new Date()
           }
         })
@@ -66,15 +74,15 @@ export async function POST(req: NextRequest) {
         // Create new lead
         await prisma.lead.create({
           data: {
-            clientName,
-            clientPhone: clientPhone || null,
-            clientEmail: clientEmail || null,
-            vehicleNo: vehicleNo || null,
+            clientName: clientNameStr,
+            clientPhone: clientPhoneStr,
+            clientEmail: clientEmailStr,
+            vehicleNo: vehicleNoStr,
             expiryDate: parsedExpiry,
             registrationDate: parsedRegDate,
-            gvw: gvw || null,
-            address: address || null,
-            city: city || null,
+            gvw: gvwStr,
+            address: addressStr,
+            city: cityStr,
             status: 'New'
           }
         })
