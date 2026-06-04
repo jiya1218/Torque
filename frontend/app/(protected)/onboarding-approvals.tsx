@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import {
   View,
   Text,
@@ -53,6 +55,80 @@ export default function OnboardingApprovalsScreen() {
       }
     });
   }, []);
+
+  const handleDownloadDoc = async (doc: any, forcePdf = false) => {
+    try {
+      const url = doc.filePath;
+      const originalExt = url.split('.').pop()?.split('?')[0] || 'pdf';
+      const displayName = getDocDisplayName(doc.fileName).replace(/\s+/g, '_');
+      
+      let ext = originalExt;
+      if (forcePdf) {
+        ext = 'pdf';
+      }
+      
+      const localUri = FileSystem.documentDirectory + `${displayName}.${ext}`;
+      
+      Alert.alert('Downloading', `Downloading ${getDocDisplayName(doc.fileName)}...`);
+      
+      const { uri } = await FileSystem.downloadAsync(url, localUri);
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri);
+      } else {
+        Alert.alert('Downloaded', `Saved to: ${uri}`);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to download file');
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!selectedUser || !selectedUser.documents || selectedUser.documents.length === 0) {
+      Alert.alert('No Documents', 'There are no documents to download.');
+      return;
+    }
+    
+    try {
+      Alert.alert('Downloading All', 'Starting download of all documents...');
+      const userNameClean = (selectedUser.full_name || 'user').replace(/\s+/g, '_');
+      const folderUri = FileSystem.documentDirectory + userNameClean + '_docs/';
+      
+      await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
+      
+      const downloadPromises = selectedUser.documents.map(async (doc: any) => {
+        const url = doc.filePath;
+        const ext = url.split('.').pop()?.split('?')[0] || 'pdf';
+        const displayName = getDocDisplayName(doc.fileName).replace(/\s+/g, '_');
+        const fileUri = folderUri + `${displayName}.${ext}`;
+        
+        await FileSystem.downloadAsync(url, fileUri);
+        return fileUri;
+      });
+      
+      const downloadedUris = await Promise.all(downloadPromises);
+      
+      Alert.alert(
+        'Success',
+        `All ${downloadedUris.length} documents have been saved locally to the folder:\n${folderUri}`,
+        [
+          { text: 'OK' },
+          {
+            text: 'Share All',
+            onPress: async () => {
+              if (await Sharing.isAvailableAsync()) {
+                for (const uri of downloadedUris) {
+                  await Sharing.shareAsync(uri);
+                }
+              }
+            }
+          }
+        ]
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to download all files');
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -300,21 +376,45 @@ export default function OnboardingApprovalsScreen() {
 
               {/* Attachments Section */}
               <View style={styles.infoSection}>
-                <Text style={styles.sectionTitle}>DOCUMENT ATTACHMENTS</Text>
+                <View style={styles.attachmentsHeaderRow}>
+                  <Text style={styles.sectionTitle}>DOCUMENT ATTACHMENTS</Text>
+                  {selectedUser.documents && selectedUser.documents.length > 0 && (
+                    <Pressable style={styles.downloadAllBtn} onPress={handleDownloadAll}>
+                      <Ionicons name="cloud-download-outline" size={14} color={Colors.primary} />
+                      <Text style={styles.downloadAllBtnText}>Download All</Text>
+                    </Pressable>
+                  )}
+                </View>
                 {selectedUser.documents && selectedUser.documents.length > 0 ? (
                   selectedUser.documents.map((doc: any) => (
                     <View key={doc.id} style={styles.docRow}>
-                      <Ionicons name="document-text" size={20} color={Colors.primary} />
+                      <Ionicons name="document-text" size={24} color={Colors.primary} style={{ marginTop: 2 }} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.docName}>{getDocDisplayName(doc.fileName)}</Text>
                       </View>
-                      <Pressable
-                        style={styles.viewDocBtn}
-                        onPress={() => Linking.openURL(doc.filePath).catch(() => Alert.alert('Error', 'Unable to open file link.'))}
-                      >
-                        <Ionicons name="eye-outline" size={14} color={Colors.primary} />
-                        <Text style={styles.viewDocBtnText}>Open</Text>
-                      </Pressable>
+                      <View style={styles.docActions}>
+                        <Pressable
+                          style={styles.viewDocBtn}
+                          onPress={() => Linking.openURL(doc.filePath).catch(() => Alert.alert('Error', 'Unable to open file link.'))}
+                        >
+                          <Ionicons name="eye-outline" size={12} color={Colors.primary} />
+                          <Text style={styles.viewDocBtnText}>Open</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.viewDocBtn}
+                          onPress={() => handleDownloadDoc(doc, false)}
+                        >
+                          <Ionicons name="download-outline" size={12} color={Colors.primary} />
+                          <Text style={styles.viewDocBtnText}>Save</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.viewDocBtn}
+                          onPress={() => handleDownloadDoc(doc, true)}
+                        >
+                          <Ionicons name="document-outline" size={12} color={Colors.primary} />
+                          <Text style={styles.viewDocBtnText}>PDF</Text>
+                        </Pressable>
+                      </View>
                     </View>
                   ))
                 ) : (
@@ -700,5 +800,32 @@ const styles = StyleSheet.create({
   modalBtnCancel: { borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.background },
   modalBtnCancelText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textMuted },
   modalBtnSubmit: { backgroundColor: Colors.warning },
-  modalBtnSubmitText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.white }
+  modalBtnSubmitText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.white },
+  attachmentsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  downloadAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primaryLight,
+  },
+  downloadAllBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  docActions: {
+    flexDirection: 'row',
+    gap: 4,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    maxWidth: '65%',
+  },
 });

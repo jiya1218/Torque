@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { useCacheStore } from '../store/cacheStore';
 
 interface User {
   id: string;
@@ -48,6 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    // Load cache globally on app startup
+    useCacheStore.getState().loadCache().catch(() => {});
 
     // Safety timeout: never stay loading forever
     const safetyTimeout = setTimeout(() => {
@@ -158,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     try {
+      await useCacheStore.getState().clearCache();
       await supabase.auth.signOut();
     } catch (e) {
       console.warn('Logout error:', e);

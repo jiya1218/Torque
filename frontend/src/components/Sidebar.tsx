@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, Animated, Dimensions, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, Animated, Dimensions, ScrollView, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../utils/theme';
@@ -163,26 +163,33 @@ const styles = StyleSheet.create({
   },
   header: { 
     flexDirection: 'row', 
-    justifyContent: 'space-between', 
     alignItems: 'center', 
+    justifyContent: 'center',
     paddingHorizontal: Spacing.lg, 
-    paddingVertical: Spacing.md, 
+    paddingTop: Platform.OS === 'ios' ? 55 : 45, 
+    paddingBottom: Spacing.md, 
     borderBottomWidth: 1, 
     borderBottomColor: Colors.border, 
-    backgroundColor: 'transparent' // Background transparent for the logo
+    backgroundColor: 'transparent',
+    position: 'relative'
   },
   logoWrap: { 
-    backgroundColor: 'transparent', // Ensure no white box background highlights the logo
-    flex: 1,
-    height: 48,
-    justifyContent: 'center'
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%'
   },
   logoImage: { 
-    width: 140, 
-    height: 38,
+    width: 180, 
+    height: 50,
     backgroundColor: 'transparent'
   },
-  closeBtn: { padding: Spacing.xs },
+  closeBtn: { 
+    position: 'absolute',
+    right: Spacing.md,
+    top: Platform.OS === 'ios' ? 55 : 45,
+    padding: Spacing.xs
+  },
   menu: { flex: 1, padding: Spacing.md },
   group: { marginBottom: Spacing.lg },
   groupLabel: { fontSize: 10, fontWeight: '800', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.sm, paddingHorizontal: Spacing.sm },

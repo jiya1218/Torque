@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator, Alert
+  ActivityIndicator, Alert, Modal
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,107 @@ const getBaseUrl = () => {
 };
 
 const BASE_URL = getBaseUrl();
+
+interface DropdownProps {
+  label: string;
+  placeholder: string;
+  options: { label: string; value: string }[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  searchable?: boolean;
+  onOpen?: () => void;
+}
+
+function DropdownSelector({ label, placeholder, options, selectedValue, onSelect, searchable = false, onOpen }: DropdownProps) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const selectedOption = options.find(o => o.value === selectedValue);
+  
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  return (
+    <View style={styles.dropdownField}>
+      <Text style={styles.label}>{label.toUpperCase()}</Text>
+      <Pressable 
+        style={styles.dropdownTrigger} 
+        onPress={() => {
+          setSearchQuery('');
+          setModalVisible(true);
+          if (onOpen) onOpen();
+        }}
+      >
+        <Text style={[styles.dropdownTriggerText, !selectedOption && styles.placeholderText]}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+      </Pressable>
+      
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{label}</Text>
+              <Pressable onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            
+            {searchable && (
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color={Colors.textLight} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                  placeholderTextColor={Colors.textLight}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textLight} />
+                  </Pressable>
+                )}
+              </View>
+            )}
+            
+            <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+              {filteredOptions.length === 0 ? (
+                <Text style={styles.noOptionsText}>No options found</Text>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = opt.value === selectedValue;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      style={[styles.optionItem, isSelected && styles.optionItemActive]}
+                      onPress={() => {
+                        onSelect(opt.value);
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                        {opt.label}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark" size={20} color={Colors.primary} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -56,6 +157,19 @@ export default function SignupScreen() {
     }
     loadMetadata();
   }, []);
+
+  const handleRefreshManagers = async () => {
+    try {
+      const METADATA_API = `${BASE_URL}/api/v1/auth/signup-metadata`;
+      const res = await fetch(METADATA_API);
+      if (res.ok) {
+        const data = await res.json();
+        setManagers(data.managers || []);
+      }
+    } catch (err) {
+      console.error('Error refreshing managers:', err);
+    }
+  };
 
   const selectedRole = roles.find(r => r.id === selectedRoleId);
   const isSalesExecutive = selectedRole?.name?.toLowerCase().includes('sales executive') || selectedRole?.name?.toLowerCase().includes('executive');
@@ -162,63 +276,37 @@ export default function SignupScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>ROLE *</Text>
-                <View style={styles.pickerContainer}>
-                  {roles.map((r) => {
-                    const isSelected = r.id === selectedRoleId;
-                    return (
-                      <Pressable
-                        key={r.id}
-                        onPress={() => {
-                          setSelectedRoleId(r.id);
-                          if (!r.name?.toLowerCase().includes('executive')) {
-                            setSelectedManagerId('');
-                          }
-                        }}
-                        style={[
-                          styles.roleCard,
-                          isSelected && styles.roleCardActive
-                        ]}
-                      >
-                        <Text style={[styles.roleCardText, isSelected && styles.roleCardTextActive]}>
-                          {r.name?.replace(/_/g, ' ')}
-                        </Text>
-                        {isSelected && <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
+              <DropdownSelector
+                label="Role *"
+                placeholder="Select role"
+                options={roles.map(r => ({
+                  label: r.name ? r.name.replace(/_/g, ' ') : '',
+                  value: r.id
+                }))}
+                selectedValue={selectedRoleId}
+                onSelect={(val) => {
+                  setSelectedRoleId(val);
+                  const selected = roles.find(r => r.id === val);
+                  const isExec = selected?.name?.toLowerCase().includes('sales executive') || selected?.name?.toLowerCase().includes('executive');
+                  if (!isExec) {
+                    setSelectedManagerId('');
+                  }
+                }}
+              />
 
               {isSalesExecutive && (
-                <View style={styles.field}>
-                  <Text style={styles.label}>REPORTING MANAGER *</Text>
-                  <View style={styles.pickerContainer}>
-                    {managers.length === 0 ? (
-                      <Text style={styles.noManagersText}>No reporting managers available</Text>
-                    ) : (
-                      managers.map((m) => {
-                        const isSelected = m.id === selectedManagerId;
-                        return (
-                          <Pressable
-                            key={m.id}
-                            onPress={() => setSelectedManagerId(m.id)}
-                            style={[
-                              styles.roleCard,
-                              isSelected && styles.roleCardActive
-                            ]}
-                          >
-                            <Text style={[styles.roleCardText, isSelected && styles.roleCardTextActive]}>
-                              {m.fullName} {m.role?.name ? `(${m.role.name})` : ''}
-                            </Text>
-                            {isSelected && <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />}
-                          </Pressable>
-                        );
-                      })
-                    )}
-                  </View>
-                </View>
+                <DropdownSelector
+                  label="Reporting Manager *"
+                  placeholder="Select manager"
+                  options={managers.map(m => ({
+                    label: `${m.fullName || m.name || m.email || 'Manager'} (${m.role?.name ? m.role.name.replace(/_/g, ' ') : 'Manager'})`,
+                    value: m.id
+                  }))}
+                  selectedValue={selectedManagerId}
+                  onSelect={setSelectedManagerId}
+                  searchable
+                  onOpen={handleRefreshManagers}
+                />
               )}
 
               <Pressable 
@@ -315,5 +403,108 @@ const styles = StyleSheet.create({
   submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '800' },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 30, gap: 6, marginBottom: 20 },
   footerText: { fontSize: FontSize.sm, color: Colors.textMuted },
-  loginLink: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '800' }
+  loginLink: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '800' },
+  dropdownField: {
+    marginBottom: Spacing.md,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    height: 52,
+    paddingHorizontal: Spacing.md,
+    marginTop: 4,
+  },
+  dropdownTriggerText: {
+    fontSize: FontSize.md,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  placeholderText: {
+    color: Colors.textLight,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    maxHeight: '85%',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalCloseBtn: {
+    padding: Spacing.xs,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: BorderRadius.md,
+    marginHorizontal: Spacing.lg,
+    marginVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: Spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    height: '100%',
+  },
+  searchClearBtn: {
+    padding: Spacing.xs,
+  },
+  optionsList: {
+    paddingHorizontal: Spacing.lg,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceMuted,
+  },
+  optionItemActive: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  optionText: {
+    fontSize: FontSize.md,
+    color: Colors.text,
+  },
+  optionTextActive: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  noOptionsText: {
+    textAlign: 'center',
+    color: Colors.textLight,
+    paddingVertical: Spacing.xl,
+    fontSize: FontSize.sm,
+  },
 });

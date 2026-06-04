@@ -5,6 +5,7 @@ interface CacheState {
   cache: Record<string, any>;
   setCache: (key: string, data: any) => Promise<void>;
   loadCache: () => Promise<void>;
+  clearCache: () => Promise<void>;
 }
 
 export const useCacheStore = create<CacheState>((set, get) => ({
@@ -26,6 +27,14 @@ export const useCacheStore = create<CacheState>((set, get) => ({
       }
     } catch (e) {
       console.warn('Cache read failed:', e);
+    }
+  },
+  clearCache: async () => {
+    set({ cache: {} });
+    try {
+      await AsyncStorage.removeItem('@app_cache');
+    } catch (e) {
+      console.warn('Cache clear failed:', e);
     }
   }
 }));

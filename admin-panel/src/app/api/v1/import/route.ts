@@ -22,10 +22,10 @@ export async function POST(req: NextRequest) {
       where: {
         isActive: true,
         role: {
-          name: {
-            equals: 'Sales Executive',
-            mode: 'insensitive'
-          }
+          OR: [
+            { name: { equals: 'Sales Executive', mode: 'insensitive' } },
+            { name: { equals: 'EXECUTIVE', mode: 'insensitive' } }
+          ]
         }
       },
       orderBy: {

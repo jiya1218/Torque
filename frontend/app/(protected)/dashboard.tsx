@@ -105,7 +105,14 @@ export default function DashboardScreen() {
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.greeting}>Welcome back,</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.greeting}>Welcome back,</Text>
+            {!user?.is_active && (
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>Pending</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.userName}>{user?.full_name || user?.name || 'Admin'}</Text>
         </View>
         <View style={styles.headerActions}>
@@ -121,6 +128,18 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
+        {!user?.is_active && (
+          <View style={styles.pendingBanner}>
+            <Ionicons name="time-outline" size={20} color={Colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pendingBannerTitle}>Profile Pending Approval</Text>
+              <Text style={styles.pendingBannerText}>
+                Your onboarding profile has been submitted and is currently awaiting admin verification.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           {isAdmin ? (
@@ -278,4 +297,41 @@ const styles = StyleSheet.create({
   activityTime:    { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 2 },
   noActivity:      { alignItems: 'center', paddingVertical: Spacing.xxl, gap: Spacing.sm },
   noActivityText:  { fontSize: FontSize.sm, color: Colors.textLight },
+  pendingBadge: {
+    backgroundColor: Colors.warningBg,
+    borderColor: Colors.warning + '80',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: BorderRadius.sm,
+  },
+  pendingBadgeText: {
+    color: Colors.warning,
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.warningBg,
+    borderWidth: 1,
+    borderColor: Colors.warning + '30',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  pendingBannerTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: '800',
+    color: Colors.warning,
+  },
+  pendingBannerText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+    lineHeight: 16,
+  },
 });

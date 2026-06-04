@@ -19,8 +19,11 @@ export async function GET(req: NextRequest) {
         role: {
           OR: [
             { name: { contains: 'manager', mode: 'insensitive' } },
-            { name: { contains: 'admin', mode: 'insensitive' } },
             { name: { contains: 'hr', mode: 'insensitive' } },
+          ],
+          NOT: [
+            { name: { contains: 'admin', mode: 'insensitive' } },
+            { name: { contains: 'super', mode: 'insensitive' } }
           ]
         }
       },

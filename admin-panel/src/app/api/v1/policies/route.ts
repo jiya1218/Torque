@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        lead: { select: { clientName: true } }
+        lead: { select: { clientName: true, vehicleNo: true } }
       }
     })
 

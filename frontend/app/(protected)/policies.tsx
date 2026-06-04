@@ -8,6 +8,111 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
 
+interface DropdownProps {
+  label: string;
+  placeholder: string;
+  options: { label: string; value: string }[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  searchable?: boolean;
+  onOpen?: () => void;
+  loading?: boolean;
+}
+
+function DropdownSelector({ label, placeholder, options, selectedValue, onSelect, searchable = false, onOpen, loading = false }: DropdownProps) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const selectedOption = options.find(o => o.value === selectedValue);
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  return (
+    <View style={styles.dropdownField}>
+      <Text style={styles.label}>{label.toUpperCase()}</Text>
+      <Pressable 
+        style={styles.dropdownTrigger} 
+        onPress={() => {
+          setSearchQuery('');
+          setModalVisible(true);
+          if (onOpen) onOpen();
+        }}
+      >
+        <Text style={[styles.dropdownTriggerText, !selectedOption && styles.placeholderText]}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : (
+          <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+        )}
+      </Pressable>
+      
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.dropdownModalContent}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>{label}</Text>
+              <Pressable onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            
+            {searchable && (
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color={Colors.textLight} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                  placeholderTextColor={Colors.textLight}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textLight} />
+                  </Pressable>
+                )}
+              </View>
+            )}
+            
+            <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+              {filteredOptions.length === 0 ? (
+                <Text style={styles.noOptionsText}>No options found</Text>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = opt.value === selectedValue;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      style={[styles.optionItem, isSelected && styles.optionItemActive]}
+                      onPress={() => {
+                        onSelect(opt.value);
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                        {opt.label}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark" size={20} color={Colors.primary} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
 export default function PoliciesScreen() {
   const router = useRouter();
   const { cache, setCache, loadCache } = useCacheStore();
@@ -253,17 +358,20 @@ export default function PoliciesScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>LINK TO LEAD (OPTIONAL ID)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Paste Lead UUID if any"
-                  placeholderTextColor={Colors.textLight}
-                  value={newPolicy.lead_id}
-                  onChangeText={(val) => setNewPolicy({ ...newPolicy, lead_id: val })}
-                />
-                <Text style={styles.hint}>Available Leads: {leads.slice(0, 5).map(l => `${l.clientName} (${l.id.substring(0, 4)}...)`).join(', ')}</Text>
-              </View>
+              <DropdownSelector
+                label="Link to Lead (Optional)"
+                placeholder="Choose a lead to link"
+                options={[
+                  { label: "None / Direct Policy", value: "" },
+                  ...leads.map(l => ({
+                    label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
+                    value: l.id
+                  }))
+                ]}
+                selectedValue={newPolicy.lead_id}
+                onSelect={(val) => setNewPolicy(prev => ({ ...prev, lead_id: val }))}
+                searchable
+              />
 
               <Pressable style={styles.submitBtn} onPress={handleAddPolicy} disabled={saving}>
                 {saving ? (
@@ -319,4 +427,107 @@ const styles = StyleSheet.create({
   hint: { fontSize: 10, color: Colors.textLight, marginTop: 4 },
   submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+  dropdownField: {
+    marginBottom: Spacing.md,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    height: 50,
+    paddingHorizontal: Spacing.md,
+    marginTop: 4,
+  },
+  dropdownTriggerText: {
+    fontSize: FontSize.md,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  placeholderText: {
+    color: Colors.textLight,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  dropdownModalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    maxHeight: '85%',
+    paddingBottom: 20,
+  },
+  dropdownModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  dropdownModalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalCloseBtn: {
+    padding: Spacing.xs,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: BorderRadius.md,
+    marginHorizontal: Spacing.lg,
+    marginVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: Spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    height: '100%',
+  },
+  searchClearBtn: {
+    padding: Spacing.xs,
+  },
+  optionsList: {
+    paddingHorizontal: Spacing.lg,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceMuted,
+  },
+  optionItemActive: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  optionText: {
+    fontSize: FontSize.md,
+    color: Colors.text,
+  },
+  optionTextActive: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  noOptionsText: {
+    textAlign: 'center',
+    color: Colors.textLight,
+    paddingVertical: Spacing.xl,
+    fontSize: FontSize.sm,
+  },
 });

@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         documents: documents?.length ? {
           create: documents.map((doc: any) => ({
             entityType: 'User',
+            entityId: authData.user.id,
             fileName: doc.type,
             filePath: doc.url
           }))
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
         documents: documents?.length ? {
           create: documents.map((doc: any) => ({
             entityType: 'User',
+            entityId: authData.user.id,
             fileName: doc.type,
             filePath: doc.url
           }))
