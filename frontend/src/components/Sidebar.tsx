@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: Spacing.lg, 
     paddingTop: Platform.OS === 'ios' ? 55 : 45, 
     paddingBottom: Spacing.md, 
@@ -175,13 +175,13 @@ const styles = StyleSheet.create({
   },
   logoWrap: { 
     backgroundColor: 'transparent',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     width: '100%'
   },
   logoImage: { 
-    width: 180, 
-    height: 50,
+    width: 220, 
+    height: 60,
     backgroundColor: 'transparent'
   },
   closeBtn: { 

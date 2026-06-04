@@ -47,8 +47,14 @@ export default function LeadsScreen() {
 
   const handleWhatsApp = async (leadId: string, phone: string, name: string, vehicle: string, expiry: string) => {
     if (phone) {
+      // Log activity to backend independently
       try {
         await api.post(`/leads/${leadId}/whatsapp`, {});
+      } catch (err) {
+        console.warn('Failed to log WhatsApp activity:', err);
+      }
+
+      try {
         const msg = `Hello ${name || 'Customer'},\nYour vehicle ${vehicle || ''} insurance expires on ${expiry || 'soon'}.\nRenew today with Torque Auto Advisor.`;
         
         let cleanPhone = phone.replace(/\D/g, '');
@@ -161,11 +167,17 @@ export default function LeadsScreen() {
 
               <View style={styles.cardMiddle}>
                 <View style={styles.metaRow}>
-                  <Ionicons name="car-outline" size={13} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{item.vehicleNo || 'No vehicle'}</Text>
+                  <Ionicons name="car-outline" size={13} color={Colors.textMuted} style={{ marginRight: 2 }} />
+                  <Text style={styles.metaText} numberOfLines={1}>{item.vehicleNo || 'No vehicle'}</Text>
                 </View>
                 <View style={styles.metaRow}>
-                  <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} />
+                  <Ionicons name="person-outline" size={13} color={Colors.textMuted} style={{ marginRight: 2 }} />
+                  <Text style={styles.metaText} numberOfLines={1}>
+                    {item.assignee?.fullName || 'Unassigned'}
+                  </Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="calendar-outline" size={13} color={Colors.textMuted} style={{ marginRight: 2 }} />
                   <Text style={styles.metaText}>
                     Exp: {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : 'N/A'}
                   </Text>

@@ -48,7 +48,8 @@ export async function POST(req: NextRequest) {
             entityType: 'User',
             entityId: authData.user.id,
             fileName: doc.type,
-            filePath: doc.url
+            filePath: doc.url,
+            uploadedBy: authData.user.id
           }))
         } : undefined
       },
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest) {
             entityType: 'User',
             entityId: authData.user.id,
             fileName: doc.type,
-            filePath: doc.url
+            filePath: doc.url,
+            uploadedBy: authData.user.id
           }))
         } : undefined
       }

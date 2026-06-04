@@ -42,7 +42,22 @@
       ],
       "expo-secure-store",
       "expo-local-authentication",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload onboarding documents and photos.",
+          "cameraPermission": "The app accesses your camera to let you take onboarding photos.",
+          "colors": {
+            "cropToolbarColor": "#1e293b"
+          },
+          "dark": {
+            "colors": {
+              "cropToolbarColor": "#1e293b"
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

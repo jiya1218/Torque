@@ -22,6 +22,24 @@ export default function OnboardingApprovalsPage() {
   const [showRemarkModal, setShowRemarkModal] = useState(false)
   const [remarkText, setRemarkText] = useState('')
 
+  const downloadFileDirectly = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode?.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      console.error('Failed to download directly:', err)
+      window.open(url, '_blank')
+    }
+  }
+
   const isAdmin = currentUser?.role?.name?.toUpperCase() === 'SUPER ADMIN' || 
     currentUser?.role?.name?.toUpperCase() === 'ADMIN' || 
     currentUser?.role?.name?.toUpperCase() === 'HR MANAGER'
@@ -354,16 +372,17 @@ export default function OnboardingApprovalsPage() {
                               >
                                 <Eye size={14} />
                               </button>
-                              <a
-                                href={doc.filePath}
-                                download
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  const ext = doc.filePath.split('.').pop()?.split('?')[0] || 'pdf'
+                                  downloadFileDirectly(doc.filePath, `${displayName}.${ext}`)
+                                }}
                                 className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                                 title="Download File"
                               >
                                 <Download size={14} />
-                              </a>
+                              </button>
                             </div>
                           </div>
                         )
@@ -440,16 +459,25 @@ export default function OnboardingApprovalsPage() {
               </div>
               
               <div className="flex items-center gap-3">
-                <a
-                  href={previewDoc.filePath}
-                  download
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => {
+                    const docDisplayNames: Record<string, string> = {
+                      ADHAR: 'Aadhaar_Card',
+                      PAN: 'PAN_Card',
+                      SSC: 'SSC_Marksheet',
+                      QUALIFICATION: 'Highest_Degree_Cert',
+                      LEAVING: 'Leaving_Certificate',
+                      PHOTO: 'Passport_Photo'
+                    }
+                    const name = docDisplayNames[previewDoc.fileName?.toUpperCase()] || previewDoc.fileName || 'Attachment'
+                    const ext = previewDoc.filePath.split('.').pop()?.split('?')[0] || 'pdf'
+                    downloadFileDirectly(previewDoc.filePath, `${name}.${ext}`)
+                  }}
                   className="flex items-center gap-1.5 px-4 py-2 bg-slate-850 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all border border-slate-800"
                   title="Download file"
                 >
                   <Download size={14} /> Download
-                </a>
+                </button>
                 
                 <button
                   onClick={() => setPreviewDoc(null)}

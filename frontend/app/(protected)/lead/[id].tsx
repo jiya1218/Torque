@@ -101,10 +101,14 @@ export default function LeadDetailScreen() {
   const sendWhatsApp = async () => {
     setIsWhatsAppModalVisible(false);
     if (lead?.phone) {
+      // Log activity to backend independently
       try {
-        // Log to backend
         await api.post(`/leads/${id}/whatsapp`, {});
-        
+      } catch (err) {
+        console.warn('Failed to log WhatsApp activity:', err);
+      }
+
+      try {
         let cleanPhone = lead.phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('0')) {
           cleanPhone = cleanPhone.substring(1);
@@ -125,7 +129,7 @@ export default function LeadDetailScreen() {
           });
         }
       } catch (err) {
-        console.error('Failed to log WhatsApp:', err);
+        console.error('WhatsApp launch error:', err);
       }
     }
   };
@@ -181,6 +185,7 @@ export default function LeadDetailScreen() {
 
         <View style={styles.infoCard}>
           <Text style={styles.sectionLabel}>VEHICLE & INSURANCE</Text>
+          <InfoRow label="Assigned To" value={lead.assignee?.fullName || 'Unassigned'} />
           <InfoRow label="Vehicle No" value={lead.vehicleNo || lead.vehicle_number} />
           <InfoRow label="Expiry Date" value={lead.expiryDate ? new Date(lead.expiryDate).toLocaleDateString() : '-'} />
           <InfoRow label="Registration" value={lead.registrationDate ? new Date(lead.registrationDate).toLocaleDateString() : '-'} />

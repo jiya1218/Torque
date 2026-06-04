@@ -70,6 +70,29 @@ export async function PUT(
     if (body.assignedTo !== undefined || body.assigned_to !== undefined) {
       data.assignedTo = body.assignedTo !== undefined ? body.assignedTo : body.assigned_to
     }
+    if (body.vehicleNo !== undefined || body.vehicle_no !== undefined) {
+      data.vehicleNo = body.vehicleNo !== undefined ? body.vehicleNo : body.vehicle_no
+    }
+    if (body.registrationDate !== undefined || body.registration_date !== undefined) {
+      const val = body.registrationDate !== undefined ? body.registrationDate : body.registration_date
+      data.registrationDate = val ? new Date(val) : null
+    }
+    if (body.expiryDate !== undefined || body.expiry_date !== undefined) {
+      const val = body.expiryDate !== undefined ? body.expiryDate : body.expiry_date
+      data.expiryDate = val ? new Date(val) : null
+    }
+    if (body.gvw !== undefined) {
+      data.gvw = body.gvw ? String(body.gvw) : null
+    }
+    if (body.existingAgent !== undefined || body.existing_agent !== undefined) {
+      data.existingAgent = body.existingAgent !== undefined ? body.existingAgent : body.existing_agent
+    }
+    if (body.city !== undefined) {
+      data.city = body.city
+    }
+    if (body.address !== undefined) {
+      data.address = body.address
+    }
     
     const lead = await prisma.lead.update({
       where: { id },

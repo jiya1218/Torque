@@ -24,6 +24,16 @@ export async function POST(req: NextRequest) {
     })
     const hadRemark = !!existingUser?.onboardingRemark
 
+    // Delete existing onboarding documents for this user if they are uploading new ones
+    if (documents?.length) {
+      await prisma.document.deleteMany({
+        where: {
+          entityType: 'User',
+          entityId: context!.userId
+        }
+      });
+    }
+
     // Update user profile
     const user = await prisma.user.update({
       where: { id: context!.userId },
@@ -40,7 +50,8 @@ export async function POST(req: NextRequest) {
             entityType: 'User',
             entityId: context!.userId,
             fileName: doc.type,
-            filePath: doc.url
+            filePath: doc.url,
+            uploadedBy: context!.userId
           }))
         } : undefined
       }

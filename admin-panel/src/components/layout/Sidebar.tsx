@@ -112,7 +112,7 @@ export default function Sidebar() {
       `}>
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png?v=3" alt="Torque Auto Advisor" className="h-12 w-auto object-contain" />
+            <img src="/logo.png?v=3" alt="Torque Auto Advisor" className="h-16 w-auto object-contain" />
           </div>
           <button onClick={() => setOpen(false)} className="md:hidden p-1 hover:bg-gray-100 rounded-lg">
             <X size={20} />

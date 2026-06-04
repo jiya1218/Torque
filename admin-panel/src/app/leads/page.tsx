@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { fetchApi } from '@/lib/api'
+import { useAuth } from '@/context/AuthContext'
 import { 
   Search, Filter, Plus, ExternalLink, Upload, CheckCircle, 
   AlertCircle, Users, Calendar, RefreshCw, Phone, MessageCircle, 
@@ -31,6 +32,8 @@ const WHATSAPP_TEMPLATES = [
 ]
 
 export default function LeadsPage() {
+  const { user } = useAuth()
+  const role = (user?.role?.name || 'EXECUTIVE').toUpperCase()
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
   const initialSearch = searchParams?.get('search') || ''
 
@@ -51,6 +54,19 @@ export default function LeadsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [newLead, setNewLead] = useState({ clientName: '', clientPhone: '', vehicleNo: '', clientEmail: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    clientName: '',
+    clientPhone: '',
+    clientEmail: '',
+    vehicleNo: '',
+    registrationDate: '',
+    expiryDate: '',
+    gvw: '',
+    existingAgent: '',
+    city: '',
+    address: ''
+  })
 
   // Status Filter State (for active cards)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -144,6 +160,7 @@ export default function LeadsPage() {
   const handleCloseDrawer = () => {
     setSelectedLeadId(null)
     setDetailedLead(null)
+    setIsEditing(false)
   }
 
   const handleUpdateLeadStatus = async (newStatus: string) => {
@@ -229,6 +246,45 @@ export default function LeadsPage() {
       fetchData()
     } catch (error) {
       alert('Failed to update lead assignee')
+    }
+  }
+
+  const handleStartEdit = () => {
+    if (!detailedLead) return
+    setEditForm({
+      clientName: detailedLead.clientName || '',
+      clientPhone: detailedLead.clientPhone || '',
+      clientEmail: detailedLead.clientEmail || '',
+      vehicleNo: detailedLead.vehicleNo || '',
+      registrationDate: detailedLead.registrationDate ? new Date(detailedLead.registrationDate).toISOString().split('T')[0] : '',
+      expiryDate: detailedLead.expiryDate ? new Date(detailedLead.expiryDate).toISOString().split('T')[0] : '',
+      gvw: detailedLead.gvw || '',
+      existingAgent: detailedLead.existingAgent || '',
+      city: detailedLead.city || '',
+      address: detailedLead.address || ''
+    })
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!detailedLead) return
+    setIsSubmitting(true)
+    try {
+      const res = await fetchApi(`/api/v1/leads/${detailedLead.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(editForm)
+      })
+      if (res) {
+        setIsEditing(false)
+        fetchLeadDetails(detailedLead.id)
+        fetchData()
+        alert('Lead details updated successfully!')
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to update lead')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -603,49 +659,181 @@ export default function LeadsPage() {
                   {/* TAB 1: OVERVIEW */}
                   {activeTab === 'info' && (
                     <div className="space-y-6">
-                      {/* Lead Status Card Controls */}
-                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure lead status</label>
-                        <select 
-                          value={detailedLead.status || 'New'}
-                          onChange={e => handleUpdateLeadStatus(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-slate-100"
-                        >
-                          <option value="New">New Lead</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Follow Up">Follow Up Needed</option>
-                          <option value="Converted">Converted Account</option>
-                          <option value="Lost">Lost Opportunity</option>
-                        </select>
-                      </div>
+                      {isEditing ? (
+                        <form onSubmit={handleSaveEdit} className="space-y-4">
+                          <div>
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Client Name *</label>
+                            <input 
+                              type="text" required
+                              value={editForm.clientName}
+                              onChange={e => setEditForm({ ...editForm, clientName: e.target.value })}
+                              className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Client Phone</label>
+                              <input 
+                                type="text"
+                                value={editForm.clientPhone}
+                                onChange={e => setEditForm({ ...editForm, clientPhone: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Client Email</label>
+                              <input 
+                                type="email"
+                                value={editForm.clientEmail}
+                                onChange={e => setEditForm({ ...editForm, clientEmail: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Vehicle No</label>
+                              <input 
+                                type="text"
+                                value={editForm.vehicleNo}
+                                onChange={e => setEditForm({ ...editForm, vehicleNo: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">GVW</label>
+                              <input 
+                                type="text"
+                                value={editForm.gvw}
+                                onChange={e => setEditForm({ ...editForm, gvw: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Registration Date</label>
+                              <input 
+                                type="date"
+                                value={editForm.registrationDate}
+                                onChange={e => setEditForm({ ...editForm, registrationDate: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Expiry Date</label>
+                              <input 
+                                type="date"
+                                value={editForm.expiryDate}
+                                onChange={e => setEditForm({ ...editForm, expiryDate: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">City</label>
+                              <input 
+                                type="text"
+                                value={editForm.city}
+                                onChange={e => setEditForm({ ...editForm, city: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Existing Agent</label>
+                              <input 
+                                type="text"
+                                value={editForm.existingAgent}
+                                onChange={e => setEditForm({ ...editForm, existingAgent: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Address</label>
+                            <textarea 
+                              value={editForm.address}
+                              onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                              rows={2}
+                              className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-slate-100 resize-none"
+                            />
+                          </div>
 
-                      {/* Lead Assignee Card Controls */}
-                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                        <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Assign to auto advisor</label>
-                        <select 
-                          value={detailedLead.assignedTo || 'unassigned'}
-                          onChange={e => handleUpdateLeadAssignee(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-slate-100"
-                        >
-                          <option value="unassigned">Unassigned (Leave Open)</option>
-                          {employees.map(emp => (
-                            <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.role?.name})</option>
-                          ))}
-                        </select>
-                      </div>
+                          <div className="flex gap-3 pt-2">
+                            <button 
+                              type="button"
+                              onClick={() => setIsEditing(false)}
+                              className="flex-1 py-3 border border-slate-200 text-slate-500 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              type="submit"
+                              disabled={isSubmitting}
+                              className="flex-1 py-3 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase transition-all disabled:opacity-50"
+                            >
+                              {isSubmitting ? 'Saving...' : 'Save Changes'}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          {/* Lead Status Card Controls */}
+                          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Configure lead status</label>
+                            <select 
+                              value={detailedLead.status || 'New'}
+                              onChange={e => handleUpdateLeadStatus(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-slate-100"
+                            >
+                              <option value="New">New Lead</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Follow Up">Follow Up Needed</option>
+                              <option value="Converted">Converted Account</option>
+                              <option value="Lost">Lost Opportunity</option>
+                            </select>
+                          </div>
 
-                      {/* Client Card details */}
-                      <div className="space-y-4">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Metadata sheet</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <DetailItem label="Client Phone" value={detailedLead.clientPhone || 'N/A'} isCopyable />
-                          <DetailItem label="Client Email" value={detailedLead.clientEmail || 'N/A'} />
-                          <DetailItem label="Gross Vehicle Weight (GVW)" value={detailedLead.gvw || 'N/A'} />
-                          <DetailItem label="City Location" value={detailedLead.city || 'N/A'} />
-                          <DetailItem label="Policy Expiry Date" value={detailedLead.expiryDate ? new Date(detailedLead.expiryDate).toLocaleDateString() : 'N/A'} />
-                          <DetailItem label="Created On" value={new Date(detailedLead.createdAt).toLocaleDateString()} />
-                        </div>
-                      </div>
+                          {/* Lead Assignee Card Controls */}
+                          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Assign to auto advisor</label>
+                            <select 
+                              value={detailedLead.assignedTo || 'unassigned'}
+                              onChange={e => handleUpdateLeadAssignee(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-slate-100"
+                            >
+                              <option value="unassigned">Unassigned (Leave Open)</option>
+                              {employees.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.role?.name})</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Client Card details */}
+                          <div className="space-y-4">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Metadata sheet</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              <DetailItem label="Client Phone" value={detailedLead.clientPhone || 'N/A'} isCopyable />
+                              <DetailItem label="Client Email" value={detailedLead.clientEmail || 'N/A'} />
+                              <DetailItem label="Gross Vehicle Weight (GVW)" value={detailedLead.gvw || 'N/A'} />
+                              <DetailItem label="City Location" value={detailedLead.city || 'N/A'} />
+                              <DetailItem label="Policy Expiry Date" value={detailedLead.expiryDate ? new Date(detailedLead.expiryDate).toLocaleDateString() : 'N/A'} />
+                              <DetailItem label="Created On" value={new Date(detailedLead.createdAt).toLocaleDateString()} />
+                            </div>
+                          </div>
+
+                          {/* Edit button */}
+                          {role !== 'EXECUTIVE' && role !== 'VIEWER' && (
+                            <button
+                              onClick={handleStartEdit}
+                              className="w-full py-2.5 mt-2 bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 rounded-xl text-xs font-bold transition-all uppercase tracking-wider"
+                            >
+                              Edit Lead Details
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
 
