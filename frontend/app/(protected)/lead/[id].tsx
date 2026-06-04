@@ -104,7 +104,26 @@ export default function LeadDetailScreen() {
       try {
         // Log to backend
         await api.post(`/leads/${id}/whatsapp`, {});
-        Linking.openURL(`https://wa.me/91${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsAppMessage)}`);
+        
+        let cleanPhone = lead.phone.replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+          cleanPhone = cleanPhone.substring(1);
+        }
+        if (!(cleanPhone.length === 12 && cleanPhone.startsWith('91'))) {
+          if (cleanPhone.length === 10) {
+            cleanPhone = '91' + cleanPhone;
+          }
+        }
+
+        const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(whatsAppMessage)}`;
+        try {
+          await Linking.openURL(whatsappUrl);
+        } catch (e) {
+          const webUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(whatsAppMessage)}`;
+          await Linking.openURL(webUrl).catch(() => {
+            Alert.alert('Error', 'Could not open WhatsApp. Please check if the app is installed.');
+          });
+        }
       } catch (err) {
         console.error('Failed to log WhatsApp:', err);
       }

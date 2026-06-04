@@ -31,6 +31,8 @@ export interface User {
   email: string;
   full_name: string;
   is_active: boolean;
+  fullName?: string;
+  isActive?: boolean;
   role_id: string | null;
   created_at: string;
   updated_at: string;
@@ -48,8 +50,10 @@ export interface User {
 export interface UserUpdate {
   email?: string;
   full_name?: string;
+  fullName?: string;
   role_id?: string;
   is_active?: boolean;
+  isActive?: boolean;
   onboardingRemark?: string | null;
 }
 
@@ -60,6 +64,19 @@ export interface UsersListResponse {
 
 const BASE = '/users';
 
+const normalizeUser = (u: any): User => {
+  if (!u) return u;
+  const fullName = u.fullName || u.full_name || '';
+  const isActive = u.isActive ?? u.is_active ?? false;
+  return {
+    ...u,
+    fullName,
+    full_name: fullName,
+    isActive,
+    is_active: isActive,
+  };
+};
+
 export const usersService = {
   /** Fetch a paginated list of users. */
   list: async (params: { skip?: number; limit?: number; search?: string } = {}): Promise<User[]> => {
@@ -67,16 +84,21 @@ export const usersService = {
     if (params.skip !== undefined) qs.set('skip', String(params.skip));
     if (params.limit !== undefined) qs.set('limit', String(params.limit));
     const query = qs.toString() ? `?${qs}` : '';
-    return api.get<User[]>(`${BASE}/${query}`);
+    const res = await api.get<any[]>(`${BASE}/${query}`);
+    return (Array.isArray(res) ? res : []).map(normalizeUser);
   },
 
   /** Get a single user by ID. */
   getById: (id: string): Promise<User> =>
-    api.get<User>(`${BASE}/${id}`),
+    api.get<any>(`${BASE}/${id}`).then(normalizeUser),
 
   /** Update a user's role or active status. */
-  update: (id: string, data: UserUpdate): Promise<User> =>
-    api.patch<User>(`${BASE}/${id}`, data),
+  update: (id: string, data: UserUpdate): Promise<User> => {
+    const body: any = { ...data };
+    if (data.is_active !== undefined) body.isActive = data.is_active;
+    if (data.full_name !== undefined) body.fullName = data.full_name;
+    return api.patch<any>(`${BASE}/${id}`, body).then(normalizeUser);
+  },
 
   /** Delete/reject a user application. */
   delete: (id: string, permanent = false): Promise<any> =>

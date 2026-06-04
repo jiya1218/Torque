@@ -41,6 +41,7 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
       label: 'OVERVIEW',
       items: [
         { name: 'Dashboard', icon: 'home-outline', route: '/(protected)/dashboard' },
+        { name: 'Reports', icon: 'bar-chart-outline', route: '/(protected)/reports' },
       ]
     },
     {
@@ -67,11 +68,13 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
       label: 'MANAGEMENT',
       items: [
         { name: 'Users', icon: 'person-outline', route: '/(protected)/users' },
+        { name: 'Onboarding Approvals', icon: 'checkmark-circle-outline', route: '/(protected)/onboarding-approvals' },
         { name: 'Roles & Permissions', icon: 'ribbon-outline', route: '/(protected)/roles' },
         { name: 'Data Approvals', icon: 'checkbox-outline', route: '/(protected)/data-approvals' },
         { name: 'Finance', icon: 'wallet-outline', route: '/(protected)/finance' },
         { name: 'HR', icon: 'people-circle-outline', route: '/(protected)/hr' },
-        { name: 'Lead Responses', icon: 'settings-outline', route: '/(protected)/responses' },
+        { name: 'Lead Responses', icon: 'chatbubble-ellipses-outline', route: '/(protected)/responses' },
+        { name: 'Settings', icon: 'settings-outline', route: '/(protected)/settings' },
       ]
     }
   ];

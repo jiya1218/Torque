@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../../src/utils/api';
@@ -50,14 +50,26 @@ export default function LeadsScreen() {
       try {
         await api.post(`/leads/${leadId}/whatsapp`, {});
         const msg = `Hello ${name || 'Customer'},\nYour vehicle ${vehicle || ''} insurance expires on ${expiry || 'soon'}.\nRenew today with Torque Auto Advisor.`;
+        
         let cleanPhone = phone.replace(/\D/g, '');
-        if (cleanPhone.length === 10) {
-          cleanPhone = '91' + cleanPhone;
+        if (cleanPhone.startsWith('0')) {
+          cleanPhone = cleanPhone.substring(1);
         }
+        if (!(cleanPhone.length === 12 && cleanPhone.startsWith('91'))) {
+          if (cleanPhone.length === 10) {
+            cleanPhone = '91' + cleanPhone;
+          }
+        }
+
         const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
-        await Linking.openURL(whatsappUrl).catch(() => {
-          return Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`);
-        });
+        try {
+          await Linking.openURL(whatsappUrl);
+        } catch (e) {
+          const webUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+          await Linking.openURL(webUrl).catch(() => {
+            Alert.alert('Error', 'Could not open WhatsApp. Please check if the app is installed.');
+          });
+        }
       } catch (err) {
         console.warn('WhatsApp launch error:', err);
       }
