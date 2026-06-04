@@ -6,7 +6,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'crm.manage_followups')
   if (error) return error
 
   try {

@@ -1,8 +1,5 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-
-// Register fonts if needed
-// Font.register({ family: 'Inter', src: '...' });
+import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#333' },
@@ -30,74 +27,74 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 40, left: 40, right: 40, borderTop: 1, borderTopColor: '#e5e7eb', paddingTop: 10, textAlign: 'center', color: '#999', fontSize: 8 },
 });
 
-export const QuotationPDF = ({ data }: { data: any }) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logoSection}>
-          <Text style={styles.companyName}>TOQUE INSURANCE</Text>
-          <Text style={styles.companySub}>Modern Insurance Solutions</Text>
-        </View>
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>Quotation</Text>
-          <Text style={{ marginTop: 4 }}>#{data.id.slice(0, 8).toUpperCase()}</Text>
-          {/* eslint-disable-next-line react-hooks/purity */}
-          <Text style={{ color: '#666' }}>Date: {new Date().toLocaleDateString()}</Text>
-        </View>
-      </View>
+export const QuotationPDF = ({ data }: { data: any }) => {
+  const quoteId = String(data?.id || '').slice(0, 8).toUpperCase();
+  const clientName = String(data?.lead?.clientName || 'N/A');
+  const clientPhone = String(data?.lead?.clientPhone || '');
+  const clientEmail = String(data?.lead?.clientEmail || '');
+  const amountStr = String(data?.amount || '0');
 
-      {/* Info */}
-      <View style={styles.infoRow}>
-        <View style={styles.infoBlock}>
-          <Text style={styles.label}>Quotation For</Text>
-          <Text style={styles.value}>{data.lead?.clientName || 'N/A'}</Text>
-          <Text style={{ marginTop: 2 }}>{data.lead?.clientPhone}</Text>
-          <Text>{data.lead?.clientEmail}</Text>
-        </View>
-        <View style={styles.infoBlock}>
-          <Text style={styles.label}>Prepared By</Text>
-          <Text style={styles.value}>Toque Admin Team</Text>
-          {/* eslint-disable-next-line react-hooks/purity */}
-          <Text style={{ marginTop: 2 }}>Valid Until: {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</Text>
-        </View>
-      </View>
-
-      {/* Table */}
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.col1, styles.headerText]}>Description</Text>
-          <Text style={[styles.col2, styles.headerText]}>Tax</Text>
-          <Text style={[styles.col3, styles.headerText]}>Amount</Text>
-        </View>
-        
-        {/* Mocking items from data.details */}
-        <View style={styles.tableRow}>
-          <Text style={styles.col1}>Premium for Car Insurance (Comprehensive)</Text>
-          <Text style={styles.col2}>18% GST</Text>
-          <Text style={styles.col3}>₹{data.amount}</Text>
-        </View>
-      </View>
-
-      {/* Total */}
-      <View style={styles.totalSection}>
-        <View style={styles.totalBlock}>
-          <View style={styles.totalRow}>
-            <Text>Subtotal</Text>
-            <Text>₹{data.amount}</Text>
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <View style={styles.logoSection}>
+            <Text style={styles.companyName}>TOQUE INSURANCE</Text>
+            <Text style={styles.companySub}>Modern Insurance Solutions</Text>
           </View>
-          <View style={[styles.totalRow, { marginTop: 10 }]}>
-            <Text style={{ fontWeight: 'bold' }}>Grand Total</Text>
-            <Text style={styles.grandTotal}>₹{data.amount}</Text>
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>Quotation</Text>
+            <Text style={{ marginTop: 4 }}>#{quoteId}</Text>
+            <Text style={{ color: '#666' }}>Date: {new Date().toLocaleDateString()}</Text>
           </View>
         </View>
-      </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text>Thank you for choosing Toque Insurance. This is a computer-generated document and does not require a signature.</Text>
-        <Text style={{ marginTop: 4 }}>www.toqueinsurance.com | +91 98765 43210</Text>
-      </View>
-    </Page>
-  </Document>
-);
+        <View style={styles.infoRow}>
+          <View style={styles.infoBlock}>
+            <Text style={styles.label}>Quotation For</Text>
+            <Text style={styles.value}>{clientName}</Text>
+            {clientPhone ? <Text style={{ marginTop: 2 }}>{clientPhone}</Text> : null}
+            {clientEmail ? <Text>{clientEmail}</Text> : null}
+          </View>
+          <View style={styles.infoBlock}>
+            <Text style={styles.label}>Prepared By</Text>
+            <Text style={styles.value}>Toque Admin Team</Text>
+            <Text style={{ marginTop: 2 }}>Valid Until: {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</Text>
+          </View>
+        </View>
+
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.col1, styles.headerText]}>Description</Text>
+            <Text style={[styles.col2, styles.headerText]}>Tax</Text>
+            <Text style={[styles.col3, styles.headerText]}>Amount</Text>
+          </View>
+          
+          <View style={styles.tableRow}>
+            <Text style={styles.col1}>Premium for Car Insurance (Comprehensive)</Text>
+            <Text style={styles.col2}>18% GST</Text>
+            <Text style={styles.col3}>₹{amountStr}</Text>
+          </View>
+        </View>
+
+        <View style={styles.totalSection}>
+          <View style={styles.totalBlock}>
+            <View style={styles.totalRow}>
+              <Text>Subtotal</Text>
+              <Text>₹{amountStr}</Text>
+            </View>
+            <View style={[styles.totalRow, { marginTop: 10 }]}>
+              <Text style={{ fontWeight: 'bold' }}>Grand Total</Text>
+              <Text style={styles.grandTotal}>₹{amountStr}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <Text>Thank you for choosing Toque Insurance. This is a computer-generated document and does not require a signature.</Text>
+          <Text style={{ marginTop: 4 }}>www.toqueinsurance.com | +91 98765 43210</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+};

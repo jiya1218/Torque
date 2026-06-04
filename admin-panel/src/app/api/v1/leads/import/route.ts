@@ -5,7 +5,7 @@ import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 
 export async function POST(req: NextRequest) {
-  const { error, context } = await validateAuth(req, 'leads.create')
+  const { error, context } = await validateAuth(req, 'leads.import')
   if (error) return error
 
   try {

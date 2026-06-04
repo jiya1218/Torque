@@ -105,7 +105,7 @@ export default function LoginScreen() {
 
           <Pressable 
             style={styles.signupBtn} 
-            onPress={() => router.push('/onboarding')}
+            onPress={() => router.push('/signup')}
           >
             <Text style={styles.signupBtnText}>
               Don&apos;t have an account? <Text style={styles.signupLinkText}>Sign Up</Text>

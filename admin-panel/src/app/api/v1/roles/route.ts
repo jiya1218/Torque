@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { validateAuth } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
+  const { error } = await validateAuth(req, 'role.view')
+  if (error) return error
+
   try {
     const roles = await prisma.role.findMany({
       include: {

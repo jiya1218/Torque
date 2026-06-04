@@ -87,14 +87,30 @@ export async function POST(req: NextRequest) {
   }
 }
 export async function PATCH(req: NextRequest) {
-  const { error } = await validateAuth(req, 'claims.edit')
-  if (error) return error
+  const { context, error } = await validateAuth(req)
+  if (error || !context) return error || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const data = await req.json()
     const { id, ...updates } = data
 
     if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
+
+    const keys = Object.keys(updates)
+    const isStatusUpdate = keys.every(k => k === 'status')
+    const isDocsUpdate = keys.every(k => k === 'documents')
+
+    let requiredPermission = 'claims.edit'
+    if (isStatusUpdate) {
+      requiredPermission = 'claims.update_status'
+    } else if (isDocsUpdate) {
+      requiredPermission = 'claims.upload_documents'
+    }
+
+    const hasPermission = context.permissions.includes(requiredPermission) || context.permissions.includes('claims.edit')
+    if (!hasPermission) {
+      return NextResponse.json({ error: `Forbidden: Missing ${requiredPermission} permission` }, { status: 403 })
+    }
 
     if (updates.incidentDate) updates.incidentDate = new Date(updates.incidentDate)
     if (updates.settledDate) updates.settledDate = new Date(updates.settledDate)

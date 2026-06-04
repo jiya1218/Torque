@@ -6,7 +6,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, context } = await validateAuth(req)
+  const { error, context } = await validateAuth(req, 'leads.view')
   if (error) return error
   const { id: leadId } = await params
   const userId = context!.userId

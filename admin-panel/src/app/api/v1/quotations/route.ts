@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { context, error } = await validateAuth(req)
+  const { context, error } = await validateAuth(req, 'quotation.view')
   if (error) return error
 
   try {

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { fetchApi } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 import { FileText, Plus, Share2, Download, Search, MessageCircle, X } from 'lucide-react'
 
 export default function QuotationsPage() {
@@ -72,6 +73,33 @@ export default function QuotationsPage() {
       }
     } catch (error: any) {
       alert(error.message || 'Failed to share quotation')
+    }
+  }
+
+  const handleDownloadPdf = async (quoteId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token || ''
+      const res = await fetch(`/api/v1/quotations/${quoteId}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (!res.ok) {
+        throw new Error('Failed to download PDF')
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `quotation_${quoteId.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error: any) {
+      console.error('Download error:', error)
+      alert(error.message || 'Failed to download PDF')
     }
   }
 
@@ -184,8 +212,9 @@ export default function QuotationsPage() {
                       <MessageCircle size={18} />
                     </button>
                     <button 
-                      onClick={() => window.open(`/api/v1/quotations/${quote.id}/pdf`, '_blank')}
+                      onClick={() => handleDownloadPdf(quote.id)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      title="Download PDF"
                     >
                       <Download size={18} />
                     </button>

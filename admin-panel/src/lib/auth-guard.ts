@@ -21,12 +21,19 @@ export async function validateAuth(
 ): Promise<{ context?: AuthContext; error?: NextResponse }> {
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('[auth-guard] Missing Authorization header');
+    let token = ''
+    if (authHeader) {
+      token = authHeader.split(' ')[1]
+    } else {
+      const { searchParams } = new URL(req.url)
+      token = searchParams.get('token') || ''
+    }
+
+    if (!token) {
+      console.error('[auth-guard] Missing Authorization header or query token');
       return { error: NextResponse.json({ error: 'Missing authorization token' }, { status: 401 }) }
     }
 
-    const token = authHeader.split(' ')[1]
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
 
     if (authError || !user) {

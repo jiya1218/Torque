@@ -57,6 +57,17 @@ export async function GET(req: NextRequest) {
         : 'agent'
       : view
 
+    // Enforce permission checks for each view
+    if (effectiveView === 'admin' && !perms.includes('dashboard.view_admin')) {
+      return NextResponse.json({ error: 'Forbidden: Missing dashboard.view_admin permission' }, { status: 403 })
+    }
+    if (effectiveView === 'manager' && !perms.includes('dashboard.view_manager')) {
+      return NextResponse.json({ error: 'Forbidden: Missing dashboard.view_manager permission' }, { status: 403 })
+    }
+    if (effectiveView === 'agent' && !perms.includes('dashboard.view_agent')) {
+      return NextResponse.json({ error: 'Forbidden: Missing dashboard.view_agent permission' }, { status: 403 })
+    }
+
     // ── Agent view ─────────────────────────────────────
     if (effectiveView === 'agent') {
       const [myLeads, myLeadsToday, myFollowupsPending, myCallsToday, myQuotations] = await Promise.all([

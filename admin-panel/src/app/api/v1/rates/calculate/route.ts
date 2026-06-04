@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'rate.calculate')
   if (error) return error
 
   try {

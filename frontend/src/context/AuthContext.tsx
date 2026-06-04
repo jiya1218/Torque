@@ -11,6 +11,12 @@ interface User {
   role_id: string | null;
   permissions: string[];
   is_active: boolean;
+  requiresOnboardingForm?: boolean;
+  onboardingRemark?: string | null;
+  highestQualification?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  homeMobile?: string;
 }
 
 interface AuthContextType {
@@ -105,6 +111,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
+
+      let requiresOnboardingForm = false;
+      let onboardingRemark = null;
+      try {
+        const statusRes = await fetch(`${LIVE_API_BASE}/api/v1/onboarding/check-form-status`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          requiresOnboardingForm = statusData.requiresForm;
+          onboardingRemark = statusData.onboardingRemark;
+        }
+      } catch (err) {
+        console.warn('onboarding status check error:', err);
+      }
+
       if (data && data.id) {
         setUser({
           id: data.id,
@@ -116,6 +142,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role_id: data.roleId || data.role_id || null,
           permissions: (data.role?.permissions || []).map((p: any) => p.name),
           is_active: data.is_active ?? data.isActive ?? true,
+          requiresOnboardingForm,
+          onboardingRemark,
+          highestQualification: data.highestQualification || '',
+          dateOfBirth: data.dateOfBirth || '',
+          joiningDate: data.joiningDate || '',
+          homeMobile: data.homeMobile || '',
         });
       }
     } catch (e) {

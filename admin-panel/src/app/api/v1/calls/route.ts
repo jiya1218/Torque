@@ -3,8 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
-  const { error } = await validateAuth(req)
+  const { context, error } = await validateAuth(req)
   if (error) return error
+
+  // User must have crm.create, crm.manage_followups, leads.edit, or lead.edit
+  const hasPermission = context!.permissions.some(p => 
+    ['crm.create', 'crm.manage_followups', 'leads.edit', 'lead.edit'].includes(p)
+  )
+  if (!hasPermission) {
+    return NextResponse.json({ error: 'Forbidden: Missing permission to log calls' }, { status: 403 })
+  }
 
   try {
     const body = await req.json()
@@ -49,7 +57,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'crm.view')
   if (error) return error
 
   try {

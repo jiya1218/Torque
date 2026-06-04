@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { QuotationPDF } from '@/components/pdf/QuotationPDF'
 import React from 'react'
+import { validateAuth } from '@/lib/auth-guard'
+import { pdf } from '@react-pdf/renderer'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error } = await validateAuth(req, 'quotation.view')
+  if (error) return error
+
   try {
     const { id } = await params
 
@@ -24,11 +29,6 @@ export async function GET(
     }
 
     // 2. Generate PDF using Web APIs (Blob/ArrayBuffer) for maximum compatibility with Next.js 15
-    const { pdf } = await import('@react-pdf/renderer')
-    
-    // Using toBlob() + arrayBuffer() is the most robust way to handle PDF data in Next.js 15
-    // as it avoids conflicts between Node.js Streams and Web Streams during the build.
-    // We use 'as any' casting to prevent strict build-time type errors in Vercel's environment.
     const pdfInstance = pdf(<QuotationPDF data={quotation} />)
     const blob = await (pdfInstance.toBlob() as any)
     const pdfArrayBuffer = await (blob.arrayBuffer() as any)

@@ -54,16 +54,26 @@ function RootLayoutNav() {
     if (!navigationState?.key || isLoading) return;
     const timer = setTimeout(() => {
       try {
-        const publicRoutes = ['/', '/login', '/onboarding', '/pin-auth'];
+        const publicRoutes = ['/', '/login', '/signup', '/pin-auth'];
         const currentPath = '/' + segments.join('/');
         const isPublicRoute = publicRoutes.some(route => currentPath === route || currentPath.startsWith(route + '/'));
         
-        if (!user && !isPublicRoute) {
-          router.replace('/');
-        } else if (user && isPublicRoute && currentPath !== '/(protected)/dashboard') {
-          // If logged in and hitting a public route, send to dashboard
-          // But allow them to stay on the route if it's already dashboard (avoid loop)
-          router.replace('/(protected)/dashboard');
+        if (!user) {
+          if (!isPublicRoute && currentPath !== '/onboarding') {
+            router.replace('/');
+          }
+        } else {
+          // User is authenticated
+          if (user.requiresOnboardingForm) {
+            if (currentPath !== '/onboarding') {
+              router.replace('/onboarding');
+            }
+          } else {
+            // User does not require onboarding
+            if (isPublicRoute || currentPath === '/onboarding') {
+              router.replace('/(protected)/dashboard');
+            }
+          }
         }
       } catch (err) {
         console.warn('Navigation error:', err);

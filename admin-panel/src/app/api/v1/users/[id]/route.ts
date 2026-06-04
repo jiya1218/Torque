@@ -7,8 +7,14 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { context, error } = await validateAuth(req)
+  if (error || !context) return error || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { id } = await params;
+    if (context.userId !== id && !context.permissions.includes('users.view')) {
+      return NextResponse.json({ error: 'Forbidden: Missing users.view permission' }, { status: 403 })
+    }
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
@@ -29,10 +35,23 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { context, error } = await validateAuth(req)
+  if (error || !context) return error || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { id } = await params;
     const body = await req.json()
     const { roleId, managerId, isActive, extraPermissionIds } = body
+
+    const isSelf = context.userId === id;
+    const isEditingSensitiveFields = roleId !== undefined || managerId !== undefined || isActive !== undefined || extraPermissionIds !== undefined;
+
+    if (isSelf && isEditingSensitiveFields && !context.permissions.includes('users.edit')) {
+      return NextResponse.json({ error: 'Forbidden: Cannot modify own role or administrative fields' }, { status: 403 })
+    }
+    if (!isSelf && !context.permissions.includes('users.edit')) {
+      return NextResponse.json({ error: 'Forbidden: Missing users.edit permission' }, { status: 403 })
+    }
 
     const user = await prisma.user.update({
       where: { id },
@@ -71,6 +90,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error } = await validateAuth(req, 'users.delete')
+  if (error) return error
+
   try {
     const { id } = await params;
     const { searchParams } = new URL(req.url)

@@ -17,6 +17,15 @@ export interface Role {
   permissions: Permission[];
 }
 
+export interface Document {
+  id: string;
+  entityType: string;
+  entityId: string;
+  fileName: string;
+  filePath: string;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -26,6 +35,14 @@ export interface User {
   created_at: string;
   updated_at: string;
   role: Role | null;
+  personalMobile?: string;
+  homeMobile?: string;
+  highestQualification?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  onboardingRemark?: string | null;
+  onboardingUpdated?: boolean;
+  documents?: Document[];
 }
 
 export interface UserUpdate {
@@ -33,6 +50,7 @@ export interface UserUpdate {
   full_name?: string;
   role_id?: string;
   is_active?: boolean;
+  onboardingRemark?: string | null;
 }
 
 export interface UsersListResponse {
@@ -58,5 +76,9 @@ export const usersService = {
 
   /** Update a user's role or active status. */
   update: (id: string, data: UserUpdate): Promise<User> =>
-    api.put<User>(`${BASE}/${id}`, data),
+    api.patch<User>(`${BASE}/${id}`, data),
+
+  /** Delete/reject a user application. */
+  delete: (id: string, permanent = false): Promise<any> =>
+    api.delete(`${BASE}/${id}${permanent ? '?permanent=true' : ''}`),
 };

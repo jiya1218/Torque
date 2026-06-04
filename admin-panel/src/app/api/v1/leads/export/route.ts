@@ -4,7 +4,7 @@ import { validateAuth } from '@/lib/auth-guard'
 import Papa from 'papaparse'
 
 export async function GET(req: NextRequest) {
-  const { error, context } = await validateAuth(req, 'leads.view')
+  const { error, context } = await validateAuth(req, 'leads.export')
   if (error) return error
 
   try {

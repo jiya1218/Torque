@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'accounts.view')
   if (error) return error
 
   try {
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'accounts.create_entry')
   if (error) return error
 
   try {

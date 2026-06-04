@@ -207,6 +207,9 @@ export default function RolesPage() {
         if (group === 'system' || group === 'setting') {
           action = 'settings_manage'
         }
+        if (group === 'role') {
+          action = 'manage_users'
+        }
       }
 
       const key = `${group}.${action}`

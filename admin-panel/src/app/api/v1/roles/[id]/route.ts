@@ -6,7 +6,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'role.view')
   if (error) return error
 
   try {
@@ -27,7 +27,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'role.edit')
   if (error) return error
 
   try {
@@ -63,7 +63,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'role.delete')
   if (error) return error
 
   try {

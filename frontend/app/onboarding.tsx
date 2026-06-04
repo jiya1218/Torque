@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../src/lib/supabase';
+import { useAuth } from '../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/utils/theme';
 
 const LIVE_BASE_URL = 'https://torque-alpha.vercel.app';
@@ -22,7 +23,6 @@ const getBaseUrl = () => {
 };
 
 const BASE_URL = getBaseUrl();
-const ONBOARDING_API = `${BASE_URL}/api/v1/onboarding`;
 
 interface OnboardingDoc {
   type: string;
@@ -33,15 +33,11 @@ interface OnboardingDoc {
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { user, refreshUser, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState('');
 
   const [form, setForm] = useState({
-    fullName: '', // Surname First
-    email: '',
-    password: '',
     highestQualification: '',
     dateOfBirth: '',
     joiningDate: '',
@@ -58,26 +54,18 @@ export default function OnboardingScreen() {
     photo: null
   });
 
+  // Pre-fill form from user profile if it already has values (useful for revision workflow)
   useEffect(() => {
-    async function loadRoles() {
-      try {
-        const ROLES_API = `${BASE_URL}/api/v1/roles`;
-        const res = await fetch(ROLES_API);
-        if (res.ok) {
-          const data = await res.json();
-          setRoles(data);
-          if (data.length > 0) {
-            setSelectedRoleId(data[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading roles:', err);
-      }
+    if (user) {
+      setForm({
+        highestQualification: user.highestQualification || '',
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
+        joiningDate: user.joiningDate ? new Date(user.joiningDate).toISOString().split('T')[0] : '',
+        personalMobile: user.phone || '',
+        homeMobile: user.homeMobile || ''
+      });
     }
-    loadRoles();
-  }, []);
-
-  const selectedRole = roles.find(r => r.id === selectedRoleId);
+  }, [user]);
 
   const pickDocument = async (type: string) => {
     try {
@@ -145,15 +133,22 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleRegister = async () => {
-    if (!form.fullName || !form.email || !form.password) {
+  const handleSubmit = async () => {
+    if (!form.highestQualification || !form.dateOfBirth || !form.personalMobile) {
       Alert.alert('Error', 'Please fill in all required fields.');
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Upload all documents first
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        Alert.alert('Error', 'Authentication token missing. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
+      // 1. Upload all selected documents
       const uploadedDocs: { type: string, url: string }[] = [];
       const docEntries = Object.entries(docs);
 
@@ -167,10 +162,17 @@ export default function OnboardingScreen() {
       }
 
       // 2. Submit data to API
-      const response = await fetch(ONBOARDING_API, {
+      const SUBMIT_API = `${BASE_URL}/api/v1/onboarding/submit-form`;
+      const response = await fetch(SUBMIT_API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, roleId: selectedRoleId, documents: uploadedDocs })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          ...form, 
+          documents: uploadedDocs 
+        })
       });
 
       const result = await response.json();
@@ -178,11 +180,11 @@ export default function OnboardingScreen() {
       if (response.ok) {
         Alert.alert(
           'Success',
-          'Your application has been submitted! Our team will review your documents and activate your account soon.',
-          [{ text: 'OK', onPress: () => router.replace('/login') }]
+          'Your application has been submitted! Our team will review your profile and activate your account soon.',
+          [{ text: 'OK', onPress: () => refreshUser() }]
         );
       } else {
-        Alert.alert('Registration Failed', result.error || 'Something went wrong');
+        Alert.alert('Submission Failed', result.error || 'Something went wrong');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to submit application');
@@ -220,137 +222,38 @@ export default function OnboardingScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll}>
           {/* Header */}
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
-          </Pressable>
-
-          <View style={styles.header}>
-            <Text style={styles.title}>Join Torque Auto Advisor</Text>
-            <Text style={styles.subtitle}>Complete your professional profile and onboarding documents.</Text>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>Profile Onboarding</Text>
+              <Text style={styles.subtitle}>Complete your profile details to unlock access</Text>
+            </View>
+            <Pressable onPress={logout} style={styles.logoutBtn}>
+              <Ionicons name="log-out-outline" size={22} color={Colors.error} />
+            </Pressable>
           </View>
+
+          {/* Admin revision remark banner */}
+          {user?.onboardingRemark ? (
+            <View style={styles.remarkBox}>
+              <Ionicons name="alert-circle" size={24} color={Colors.error} style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.remarkTitle}>Revision Requested by Admin:</Text>
+                <Text style={styles.remarkText}>{user.onboardingRemark}</Text>
+              </View>
+            </View>
+          ) : null}
 
           {/* Progress */}
           <View style={styles.progressWrap}>
-            <View style={[styles.progressBar, { width: `${(step / 4) * 100}%` }]} />
+            <View style={[styles.progressBar, { width: `${(step / 2) * 100}%` }]} />
           </View>
 
           {step === 1 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.sectionTitle}>Select Your Role</Text>
-              <Text style={styles.infoText}>Choose your professional designation to map your permissions automatically.</Text>
-              
-              <View style={{ gap: 12, marginBottom: 20 }}>
-                {roles.map((r) => {
-                  const isSelected = r.id === selectedRoleId;
-                  return (
-                    <Pressable
-                      key={r.id}
-                      onPress={() => setSelectedRoleId(r.id)}
-                      style={[
-                        {
-                          padding: 16,
-                          borderRadius: BorderRadius.md,
-                          borderWidth: 2,
-                          borderColor: isSelected ? Colors.primary : Colors.border,
-                          backgroundColor: isSelected ? Colors.primaryLight : Colors.surface,
-                        }
-                      ]}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={{ fontSize: FontSize.md, fontWeight: '800', color: isSelected ? Colors.primary : Colors.text }}>
-                          {r.name}
-                        </Text>
-                        {isSelected && <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />}
-                      </View>
-                      <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 }}>
-                        {r.description || 'Access mappings for this role.'}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {selectedRole && selectedRole.permissions && (
-                <View style={{ backgroundColor: Colors.surfaceMuted, padding: 16, borderRadius: BorderRadius.md, marginBottom: 20 }}>
-                  <Text style={{ fontSize: FontSize.xs, fontWeight: '800', color: Colors.text, marginBottom: 8 }}>
-                    Inherited Role Permissions:
-                  </Text>
-                  <View style={{ maxHeight: 120 }}>
-                    <ScrollView nestedScrollEnabled={true}>
-                      {selectedRole.permissions.map((p: any, i: number) => (
-                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <Ionicons name="shield" size={12} color={Colors.primary} />
-                          <Text style={{ fontSize: FontSize.xs, color: Colors.textLight }} numberOfLines={1}>
-                            {p.name} - {p.description}
-                          </Text>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  </View>
-                </View>
-              )}
-
-              <Pressable style={styles.mainBtn} onPress={() => setStep(2)}>
-                <Text style={styles.mainBtnText}>Next: Account Details</Text>
-                <Ionicons name="arrow-forward" size={18} color={Colors.white} />
-              </Pressable>
-            </View>
-          )}
-
-          {step === 2 && (
-            <View style={styles.stepContainer}>
-              <Text style={styles.sectionTitle}>Account Details</Text>
-              
-              <View style={styles.field}>
-                <Text style={styles.label}>FULL NAME (Surname First) *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. MEHRA KARAN"
-                  value={form.fullName}
-                  onChangeText={(val) => setForm({ ...form, fullName: val })}
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>EMAIL ADDRESS *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="karan@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={form.email}
-                  onChangeText={(val) => setForm({ ...form, email: val })}
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>PASSWORD *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  secureTextEntry
-                  value={form.password}
-                  onChangeText={(val) => setForm({ ...form, password: val })}
-                />
-              </View>
-
-              <View style={styles.btnRow}>
-                <Pressable style={styles.backStepBtn} onPress={() => setStep(1)}>
-                  <Text style={styles.backStepBtnText}>Back</Text>
-                </Pressable>
-                <Pressable style={[styles.mainBtn, { flex: 2 }]} onPress={() => setStep(3)}>
-                  <Text style={styles.mainBtnText}>Next: Professional Info</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-
-          {step === 3 && (
-            <View style={styles.stepContainer}>
               <Text style={styles.sectionTitle}>Professional Info</Text>
 
               <View style={styles.field}>
-                <Text style={styles.label}>HIGHEST QUALIFICATION</Text>
+                <Text style={styles.label}>HIGHEST QUALIFICATION *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. MBA, B.Tech"
@@ -360,7 +263,7 @@ export default function OnboardingScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>DATE OF BIRTH (YYYY-MM-DD)</Text>
+                <Text style={styles.label}>DATE OF BIRTH (YYYY-MM-DD) *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="1995-05-20"
@@ -380,7 +283,7 @@ export default function OnboardingScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>MOBILE NUMBER</Text>
+                <Text style={styles.label}>MOBILE NUMBER *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="+91 00000 00000"
@@ -401,18 +304,14 @@ export default function OnboardingScreen() {
                 />
               </View>
 
-              <View style={styles.btnRow}>
-                <Pressable style={styles.backStepBtn} onPress={() => setStep(2)}>
-                  <Text style={styles.backStepBtnText}>Back</Text>
-                </Pressable>
-                <Pressable style={[styles.mainBtn, { flex: 2 }]} onPress={() => setStep(4)}>
-                  <Text style={styles.mainBtnText}>Next: Documents</Text>
-                </Pressable>
-              </View>
+              <Pressable style={styles.mainBtn} onPress={() => setStep(2)}>
+                <Text style={styles.mainBtnText}>Next: Upload Documents</Text>
+                <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+              </Pressable>
             </View>
           )}
 
-          {step === 4 && (
+          {step === 2 && (
             <View style={styles.stepContainer}>
               <Text style={styles.sectionTitle}>Document Uploads</Text>
               <Text style={styles.infoText}>Please upload clear scans or photos of the following documents.</Text>
@@ -427,19 +326,19 @@ export default function OnboardingScreen() {
               </View>
 
               <View style={styles.btnRow}>
-                <Pressable style={styles.backStepBtn} onPress={() => setStep(3)}>
+                <Pressable style={styles.backStepBtn} onPress={() => setStep(1)}>
                   <Text style={styles.backStepBtnText}>Back</Text>
                 </Pressable>
 
                 <Pressable 
-                  style={[styles.mainBtn, { flex: 2 }]} 
-                  onPress={handleRegister}
+                  style={[styles.mainBtn, { flex: 2, marginTop: 0 }]} 
+                  onPress={handleSubmit}
                   disabled={loading}
                 >
                   {loading ? (
                     <ActivityIndicator color={Colors.white} />
                   ) : (
-                    <Text style={styles.mainBtnText}>Submit Application</Text>
+                    <Text style={styles.mainBtnText}>Submit Details</Text>
                   )}
                 </Pressable>
               </View>
@@ -455,11 +354,25 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { padding: Spacing.xl },
-  backBtn: { marginBottom: Spacing.lg },
-  header: { marginBottom: Spacing.xxl },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.xl },
   title: { fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
-  subtitle: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: Spacing.xs },
+  subtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  logoutBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
   
+  remarkBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.errorBg,
+    borderWidth: 1,
+    borderColor: Colors.error + '30',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl
+  },
+  remarkTitle: { fontSize: FontSize.sm, fontWeight: '800', color: Colors.error },
+  remarkText: { fontSize: FontSize.sm - 1, color: Colors.error, marginTop: 2, lineHeight: 18 },
+
   progressWrap: {
     height: 6, backgroundColor: Colors.surfaceMuted, 
     borderRadius: 3, marginBottom: Spacing.xxxl,
@@ -510,7 +423,7 @@ const styles = StyleSheet.create({
   },
   mainBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '800' },
   
-  btnRow: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
+  btnRow: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center', marginTop: Spacing.xl },
   backStepBtn: { flex: 1, height: 54, justifyContent: 'center', alignItems: 'center' },
   backStepBtnText: { color: Colors.textMuted, fontWeight: '700' }
 });

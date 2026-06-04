@@ -65,14 +65,30 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { error } = await validateAuth(req, 'rto.edit')
-  if (error) return error
+  const { context, error } = await validateAuth(req)
+  if (error || !context) return error || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const data = await req.json()
     const { id, ...updates } = data
 
     if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
+
+    const keys = Object.keys(updates)
+    const isPaymentUpdate = keys.some(k => ['paymentStatus', 'paymentAmount', 'paymentDate'].includes(k))
+    const isStatusUpdate = keys.every(k => k === 'status')
+
+    let requiredPermission = 'rto.edit'
+    if (isPaymentUpdate) {
+      requiredPermission = 'rto.track_payment'
+    } else if (isStatusUpdate) {
+      requiredPermission = 'rto.update_status'
+    }
+
+    const hasPermission = context.permissions.includes(requiredPermission) || context.permissions.includes('rto.edit')
+    if (!hasPermission) {
+      return NextResponse.json({ error: `Forbidden: Missing ${requiredPermission} permission` }, { status: 403 })
+    }
 
     if (updates.dueDate) updates.dueDate = new Date(updates.dueDate)
     if (updates.paymentDate) updates.paymentDate = new Date(updates.paymentDate)

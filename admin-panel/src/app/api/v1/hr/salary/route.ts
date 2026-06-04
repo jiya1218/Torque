@@ -3,12 +3,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
-  const { error } = await validateAuth(req)
-  if (error) return error
+  const { context, error } = await validateAuth(req)
+  if (error || !context) return error || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId')
+
+    // Check permission: Self or has accounts.manage_salary / hr.view / accounts.view
+    const isSelf = userId === context.userId
+    const hasSalaryView = context.permissions.some(p => 
+      ['accounts.manage_salary', 'hr.view', 'accounts.view'].includes(p)
+    )
+    if (!isSelf && !hasSalaryView) {
+      return NextResponse.json({ error: 'Forbidden: Missing permission to view salary details' }, { status: 403 })
+    }
     const month = searchParams.get('month')
     const year = searchParams.get('year')
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -48,7 +57,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await validateAuth(req)
+  const { error } = await validateAuth(req, 'accounts.manage_salary')
   if (error) return error
 
   try {

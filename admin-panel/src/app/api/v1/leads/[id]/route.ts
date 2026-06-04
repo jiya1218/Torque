@@ -46,6 +46,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { error: authError } = await validateAuth(req, 'lead.edit')
+  if (authError) return authError
+
   try {
     const { id } = await params
     const body = await req.json()
