@@ -30,14 +30,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
-    // Delete existing documents for this user first to avoid duplicates
-    await prisma.document.deleteMany({
-      where: {
-        entityType: 'User',
-        entityId: authData.user.id
-      }
-    })
-
     // 2. Create/Update user in Prisma DB (using upsert to handle trigger-created rows)
     const user = await prisma.user.upsert({
       where: { id: authData.user.id },
@@ -54,7 +46,6 @@ export async function POST(req: NextRequest) {
         documents: documents?.length ? {
           create: documents.map((doc: any) => ({
             entityType: 'User',
-            entityId: authData.user.id,
             fileName: doc.type,
             filePath: doc.url
           }))
@@ -74,7 +65,6 @@ export async function POST(req: NextRequest) {
         documents: documents?.length ? {
           create: documents.map((doc: any) => ({
             entityType: 'User',
-            entityId: authData.user.id,
             fileName: doc.type,
             filePath: doc.url
           }))

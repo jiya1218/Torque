@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, FlatList, Pressable, TextInput,
@@ -9,18 +9,28 @@ import { usersService, User, Document } from '../../src/services/users';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
-import Sidebar from '../../src/components/Sidebar';
 import { useCacheStore } from '../../src/store/cacheStore';
+import Sidebar from '../../src/components/Sidebar';
 
 export default function UsersScreen() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const { cache, setCache, loadCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [items, setItems] = useState<User[]>(cache['/users'] || []);
-  const [total, setTotal] = useState(items.length);
+  const [items, setItems] = useState<User[]>(cache['/users']?.users || []);
+  const [total, setTotal] = useState(cache['/users']?.users?.length || 0);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  React.useEffect(() => {
+    loadCache().then(() => {
+      const cached = cache['/users'];
+      if (cached && cached.users) {
+        setItems(cached.users);
+        setTotal(cached.users.length);
+      }
+    });
+  }, []);
 
   // Modal states
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -31,15 +41,6 @@ export default function UsersScreen() {
 
   const roleUpper = currentUser?.role?.toUpperCase();
   const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'HR';
-
-  useEffect(() => {
-    loadCache().then(() => {
-      if (cache['/users']) {
-        setItems(cache['/users']);
-        setTotal(cache['/users'].length);
-      }
-    });
-  }, []);
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
@@ -54,7 +55,7 @@ export default function UsersScreen() {
         : data;
       setItems(filtered);
       setTotal(filtered.length);
-      setCache('/users', data); // cache the unfiltered list for offline list access
+      setCache('/users', { users: filtered });
 
       // If a user detail was open, refresh their data too
       if (selectedUser) {
@@ -151,8 +152,8 @@ export default function UsersScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
-          <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
-            <Ionicons name="menu-outline" size={26} color={Colors.text} />
+          <Pressable testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={Colors.text} />
           </Pressable>
           <Text style={styles.title}>Access Denied</Text>
         </View>
@@ -160,16 +161,18 @@ export default function UsersScreen() {
           <Ionicons name="lock-closed" size={48} color={Colors.error} />
           <Text style={styles.emptyText}>You do not have permission to view this screen.</Text>
         </View>
-        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Sidebar Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Users</Text>
@@ -331,10 +334,8 @@ export default function UsersScreen() {
                         <Pressable 
                           style={styles.circleBtn} 
                           onPress={async () => {
-                            const name = selectedUser.full_name || 'User';
-                            const msg = `Hi ${name}`;
-                            let phone = selectedUser.personalMobile || '';
-                            let cleanPhone = phone.replace(/\D/g, '');
+                            const msg = `Hi ${selectedUser.full_name}`;
+                            let cleanPhone = selectedUser.personalMobile?.replace(/\D/g, '') || '';
                             if (cleanPhone.length === 10) {
                               cleanPhone = '91' + cleanPhone;
                             }
@@ -498,7 +499,6 @@ export default function UsersScreen() {
           </View>
         </View>
       </Modal>
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -507,7 +507,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md },
   backBtn: { padding: Spacing.xs },
-  menuBtn: { padding: Spacing.xs },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
   count: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, paddingVertical: 2, borderRadius: BorderRadius.sm },
   searchRow: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },

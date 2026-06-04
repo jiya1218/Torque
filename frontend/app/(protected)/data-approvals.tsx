@@ -1,74 +1,83 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, Alert, ActivityIndicator, StatusBar } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
-import Sidebar from '../../src/components/Sidebar';
 import { useCacheStore } from '../../src/store/cacheStore';
+import Sidebar from '../../src/components/Sidebar';
 
 export default function DataApprovalsScreen() {
-  const { cache, setCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [items, setItems] = useState<any[]>(cache['/data/changes'] || []);
-  const [refreshing, setRefreshing] = useState(false);
+  const router = useRouter();
+  const { cache, setCache, loadCache } = useCacheStore();
 
-  // Review Modal State
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [selectedReq, setSelectedReq] = useState<any | null>(null);
-  const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const [requests, setRequests] = useState<any[]>(cache['/data/changes']?.items || []);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filter, setFilter] = useState('pending');
+
+  // Modal review state
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
   const [reviewNote, setReviewNote] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Load cache on mount
+  useEffect(() => {
+    loadCache().then(() => {
+      const cached = cache['/data/changes'];
+      if (cached && cached.items) {
+        setRequests(cached.items);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get<any[]>('/data/changes');
+      const statusParam = filter !== 'all' ? `?status=${filter}` : '';
+      const data = await api.get<any[]>(`/data/changes${statusParam}`);
       const arr = Array.isArray(data) ? data : [];
-      setItems(arr);
-      setCache('/data/changes', arr);
+      setRequests(arr);
+      setCache('/data/changes', { items: arr });
     } catch (e) {
-      console.error('[DataApprovalsScreen] Failed to load changes', e);
+      console.error('[DataApprovalsScreen] Failed to load data changes', e);
     }
-  }, [setCache]);
+  }, [filter, setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  
-  const onRefresh = async () => { 
-    setRefreshing(true); 
-    await load(); 
-    setRefreshing(false); 
-  };
+  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const openReviewModal = (req: any, type: 'approve' | 'reject') => {
-    setSelectedReq(req);
-    setActionType(type);
+  const handleReviewTrigger = (req: any, action: 'approve' | 'reject') => {
+    setSelectedRequest(req);
+    setReviewAction(action);
     setReviewNote('');
-    setReviewModalOpen(true);
+    setReviewModalVisible(true);
   };
 
-  const handleReview = async () => {
-    if (!selectedReq) return;
-
-    setSaving(true);
+  const handleSaveReview = async () => {
+    if (!selectedRequest) return;
+    setSubmitting(true);
     try {
-      await api.patch(`/data/changes/${selectedReq.id}`, {
-        action: actionType,
-        reviewNote
+      await api.patch(`/data/changes/${selectedRequest.id}`, {
+        action: reviewAction,
+        reviewNote: reviewNote.trim() || null
       });
-      setReviewModalOpen(false);
-      Alert.alert('Success', `Change request ${actionType}d successfully!`);
+      setReviewModalVisible(false);
+      Alert.alert('Success', `Request has been ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully.`);
       load();
     } catch (e: any) {
-      Alert.alert('Error', e.message || `Failed to ${actionType} request`);
+      Alert.alert('Error', e.message || 'Failed to review request');
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {/* Sidebar Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -76,192 +85,200 @@ export default function DataApprovalsScreen() {
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Data Approvals</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{items.filter(r => r.status === 'pending').length} pending</Text>
-        </View>
       </View>
 
+      {/* Filters */}
+      <View style={styles.filterRow}>
+        {['pending', 'approved', 'rejected', 'all'].map(s => (
+          <Pressable key={s} style={[styles.chip, filter === s && styles.chipActive]} onPress={() => setFilter(s)}>
+            <Text style={[styles.chipText, filter === s && styles.chipTextActive]}>{s}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* List */}
       <FlatList 
-        data={items} 
+        data={requests} 
         keyExtractor={i => i.id} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
-        contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="checkbox-outline" size={48} color={Colors.textLight} />
-            <Text style={styles.emptyText}>No data change requests</Text>
+            <Text style={styles.emptyText}>No change requests found</Text>
           </View>
         }
         renderItem={({ item }) => {
-          const sc = StatusColors[item.status] || StatusColors.pending;
-          const isPending = item.status === 'pending';
+          let statusColor = Colors.primary;
+          if (item.status === 'approved') statusColor = Colors.success;
+          if (item.status === 'rejected') statusColor = Colors.error;
+
           return (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <View>
-                  <Text style={styles.requesterName}>{item.requester?.fullName || 'Requester'}</Text>
-                  <Text style={styles.requestedAt}>{new Date(item.requestedAt).toLocaleString()}</Text>
+                  <Text style={styles.entityTitle}>{item.entityType.toUpperCase()} ({item.entityId.substring(0, 8)}…)</Text>
+                  <Text style={styles.requester}>Requested by {item.requester?.fullName || item.requester?.email || 'Staff'}</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                  <Text style={[styles.badgeText, { color: sc.text }]}>{item.status.toUpperCase()}</Text>
+                <View style={[styles.statusBadge, { borderColor: statusColor + '20', backgroundColor: statusColor + '10' }]}>
+                  <Text style={[styles.statusText, { color: statusColor }]}>{item.status.toUpperCase()}</Text>
                 </View>
               </View>
 
               <View style={styles.changeDetails}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Entity:</Text>
-                  <Text style={styles.detailVal}>{item.entityType}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Field:</Text>
-                  <Text style={[styles.detailVal, { color: Colors.primary, fontWeight: '700' }]}>{item.field}</Text>
-                </View>
-                <View style={styles.changeRow}>
-                  <View style={styles.valBox}>
-                    <Text style={styles.valTitle}>OLD VALUE</Text>
-                    <Text style={styles.oldValText} numberOfLines={2}>{item.oldValue || '(empty)'}</Text>
+                <Text style={styles.fieldLabel}>Field: <Text style={{ color: Colors.text, fontWeight: '700' }}>{item.field}</Text></Text>
+                <View style={styles.valuesRow}>
+                  <View style={styles.valueBox}>
+                    <Text style={styles.boxTitle}>Old Value</Text>
+                    <Text style={styles.boxVal}>{item.oldValue || '—'}</Text>
                   </View>
-                  <Ionicons name="arrow-forward" size={16} color={Colors.textLight} style={{ alignSelf: 'center' }} />
-                  <View style={styles.valBox}>
-                    <Text style={styles.valTitle}>NEW VALUE</Text>
-                    <Text style={styles.newValText} numberOfLines={2}>{item.newValue}</Text>
+                  <Ionicons name="arrow-forward-outline" size={16} color={Colors.textLight} style={{ marginHorizontal: 4 }} />
+                  <View style={styles.valueBox}>
+                    <Text style={styles.boxTitle}>New Value</Text>
+                    <Text style={[styles.boxVal, { color: Colors.success, fontWeight: '700' }]}>{item.newValue}</Text>
                   </View>
                 </View>
-                {item.reason ? (
-                  <View style={styles.reasonBox}>
-                    <Text style={styles.reasonLabel}>Reason:</Text>
-                    <Text style={styles.reasonText}>&quot;{item.reason}&quot;</Text>
-                  </View>
-                ) : null}
               </View>
 
-              {isPending ? (
+              {item.reason ? (
+                <Text style={styles.reasonText}>Reason: &quot;{item.reason}&quot;</Text>
+              ) : null}
+
+              {item.status === 'pending' ? (
                 <View style={styles.actions}>
                   <Pressable 
-                    style={[styles.actionBtn, styles.rejectBtn]} 
-                    onPress={() => openReviewModal(item, 'reject')}
+                    style={[styles.btn, styles.approveBtn]} 
+                    onPress={() => handleReviewTrigger(item, 'approve')}
                   >
-                    <Ionicons name="close-circle-outline" size={16} color={Colors.error} />
-                    <Text style={styles.rejectText}>Reject</Text>
+                    <Ionicons name="checkmark" size={16} color={Colors.white} />
+                    <Text style={styles.btnText}>Approve</Text>
                   </Pressable>
                   <Pressable 
-                    style={[styles.actionBtn, styles.approveBtn]} 
-                    onPress={() => openReviewModal(item, 'approve')}
+                    style={[styles.btn, styles.rejectBtn]} 
+                    onPress={() => handleReviewTrigger(item, 'reject')}
                   >
-                    <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                    <Text style={styles.approveText}>Approve</Text>
+                    <Ionicons name="close" size={16} color={Colors.white} />
+                    <Text style={styles.btnText}>Reject</Text>
                   </Pressable>
                 </View>
               ) : (
-                <View style={styles.reviewedByBox}>
-                  <Text style={styles.reviewedByText}>
-                    Reviewed by: {item.reviewer?.fullName || 'Reviewer'}
-                  </Text>
-                  {item.reviewNote ? (
-                    <Text style={styles.reviewNote}>Note: &quot;{item.reviewNote}&quot;</Text>
-                  ) : null}
-                </View>
+                item.reviewNote && (
+                  <View style={styles.reviewNoteBox}>
+                    <Text style={styles.reviewNoteTitle}>Review Note</Text>
+                    <Text style={styles.reviewNoteText}>{item.reviewNote}</Text>
+                  </View>
+                )
               )}
             </View>
           );
         }}
       />
 
-      {/* Review Modal */}
-      <Modal visible={reviewModalOpen} transparent animationType="fade" onRequestClose={() => setReviewModalOpen(false)}>
+      {/* ── Action Review Modal ── */}
+      <Modal
+        visible={reviewModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setReviewModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {actionType === 'approve' ? 'Approve Request' : 'Reject Request'}
-            </Text>
-            <Text style={styles.modalDesc}>
-              Do you want to {actionType} this data modification? You can optionally add a note below.
-            </Text>
-
-            <TextInput 
-              style={styles.textArea} 
-              multiline
-              numberOfLines={4}
-              placeholder="Add optional note here..." 
-              placeholderTextColor={Colors.textLight} 
-              value={reviewNote}
-              onChangeText={setReviewNote}
-            />
-
-            <View style={styles.modalBtnRow}>
-              <Pressable style={styles.cancelBtn} onPress={() => setReviewModalOpen(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {reviewAction === 'approve' ? 'Approve' : 'Reject'} Change Request
+              </Text>
+              <Pressable onPress={() => setReviewModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
               </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.descText}>
+                Are you sure you want to {reviewAction} this data change? Any approved change will overwrite the current live value.
+              </Text>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>REVIEW NOTE / COMMENTS (OPTIONAL)</Text>
+                <TextInput
+                  style={[styles.input, { height: 100, textAlignVertical: 'top', paddingTop: Spacing.sm }]}
+                  placeholder="Explain why this request is approved or rejected..."
+                  placeholderTextColor={Colors.textLight}
+                  multiline
+                  numberOfLines={4}
+                  value={reviewNote}
+                  onChangeText={setReviewNote}
+                />
+              </View>
+
               <Pressable 
-                style={[styles.submitBtn, actionType === 'approve' ? styles.submitApprove : styles.submitReject]} 
-                onPress={handleReview}
-                disabled={saving}
+                style={[
+                  styles.submitBtn, 
+                  reviewAction === 'approve' ? { backgroundColor: Colors.success } : { backgroundColor: Colors.error }
+                ]} 
+                onPress={handleSaveReview} 
+                disabled={submitting}
               >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
+                {submitting ? (
+                  <ActivityIndicator color={Colors.white} />
                 ) : (
                   <Text style={styles.submitBtnText}>
-                    {actionType === 'approve' ? 'Approve' : 'Reject'}
+                    Confirm {reviewAction === 'approve' ? 'Approval' : 'Rejection'}
                   </Text>
                 )}
               </Pressable>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
-
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: '#FFFFFF', gap: Spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md, backgroundColor: '#FFFFFF' },
   menuBtn: { padding: Spacing.xs },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
-  countBadge: { backgroundColor: Colors.warning + '18', paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.md },
-  countText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.warning },
-  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.lg, padding: Spacing.lg, marginHorizontal: Spacing.xs },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  requesterName: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text },
-  requestedAt: { fontSize: 10, color: Colors.textMuted, marginTop: 1 },
-  badge: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: BorderRadius.sm },
-  badgeText: { fontSize: FontSize.xs - 1, fontWeight: '800' },
-  changeDetails: { backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: Spacing.md, gap: Spacing.xs, marginBottom: Spacing.md },
-  detailRow: { flexDirection: 'row', gap: Spacing.xs },
-  detailLabel: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
-  detailVal: { fontSize: FontSize.xs, color: Colors.text, fontWeight: '700' },
-  changeRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.md, marginTop: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border + '50' },
-  valBox: { flex: 1, gap: 2 },
-  valTitle: { fontSize: 8, fontWeight: '800', color: Colors.textLight, letterSpacing: 1 },
-  oldValText: { fontSize: FontSize.sm - 1, color: Colors.textMuted, textDecorationLine: 'line-through' },
-  newValText: { fontSize: FontSize.sm - 1, color: Colors.success, fontWeight: '800' },
-  reasonBox: { marginTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border + '50', paddingTop: Spacing.sm },
-  reasonLabel: { fontSize: 9, fontWeight: '800', color: Colors.textLight, textTransform: 'uppercase' },
-  reasonText: { fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic', marginTop: 1 },
-  actions: { flexDirection: 'row', gap: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border + '50', paddingTop: Spacing.md },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, height: 40, borderRadius: BorderRadius.md },
-  rejectBtn: { borderWidth: 1, borderColor: Colors.error + '40', backgroundColor: '#FFF5F5' },
-  rejectText: { color: Colors.error, fontWeight: '700', fontSize: FontSize.sm },
+  filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingVertical: Spacing.sm, backgroundColor: '#FFFFFF' },
+  chip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.border },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, textTransform: 'capitalize' },
+  chipTextActive: { color: Colors.white },
+  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.lg, marginHorizontal: Spacing.md, marginBottom: Spacing.sm },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: Spacing.sm, marginBottom: Spacing.sm },
+  entityTitle: { fontSize: FontSize.md - 1, fontWeight: '800', color: Colors.text },
+  requester: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  statusBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm, borderWidth: 1 },
+  statusText: { fontSize: FontSize.xs - 1, fontWeight: '700' },
+  changeDetails: { marginBottom: Spacing.md },
+  fieldLabel: { fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: Spacing.xs },
+  valuesRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.xs, marginTop: Spacing.xs },
+  valueBox: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', padding: Spacing.md, borderRadius: BorderRadius.sm },
+  boxTitle: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: 2 },
+  boxVal: { fontSize: FontSize.sm, color: Colors.text, fontWeight: '500' },
+  reasonText: { fontSize: FontSize.xs, fontStyle: 'italic', color: Colors.textLight, marginBottom: Spacing.md },
+  actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  btn: { flex: 1, flexDirection: 'row', height: 40, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', gap: Spacing.xs },
+  btnText: { color: Colors.white, fontWeight: '700', fontSize: FontSize.sm },
   approveBtn: { backgroundColor: Colors.success },
-  approveText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
-  reviewedByBox: { borderTopWidth: 1, borderTopColor: Colors.border + '50', paddingTop: Spacing.sm, gap: 2 },
-  reviewedByText: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
-  reviewNote: { fontSize: FontSize.sm - 1, color: Colors.textLight, fontStyle: 'italic' },
-  empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.md },
+  rejectBtn: { backgroundColor: Colors.error },
+  reviewNoteBox: { backgroundColor: '#F8FAFC', padding: Spacing.md, borderRadius: BorderRadius.sm, marginTop: Spacing.sm, borderWidth: 1, borderColor: Colors.border },
+  reviewNoteTitle: { fontSize: FontSize.xs - 1, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase' },
+  reviewNoteText: { fontSize: FontSize.xs, color: Colors.text, marginTop: 2 },
+  empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
   emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
-  // Modal Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FFFFFF', borderRadius: BorderRadius.lg, width: '85%', padding: Spacing.xl },
-  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text, marginBottom: Spacing.xs },
-  modalDesc: { fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.md, lineHeight: 18 },
-  textArea: { borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, backgroundColor: Colors.background, padding: Spacing.md, fontSize: FontSize.md, color: Colors.text, textAlignVertical: 'top', height: 100, marginBottom: Spacing.lg },
-  modalBtnRow: { flexDirection: 'row', gap: Spacing.md },
-  cancelBtn: { flex: 1, height: 46, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
-  cancelBtnText: { color: Colors.textMuted, fontWeight: '700', fontSize: FontSize.sm },
-  submitBtn: { flex: 1, height: 46, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center' },
-  submitApprove: { backgroundColor: Colors.success },
-  submitReject: { backgroundColor: Colors.error },
-  submitBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.sm }
+
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '60%', padding: Spacing.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  closeBtn: { padding: Spacing.xs },
+  modalBody: { flex: 1, marginTop: Spacing.lg },
+  descText: { fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 20, marginBottom: Spacing.lg },
+  field: { marginBottom: Spacing.md },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  submitBtn: { height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
 });

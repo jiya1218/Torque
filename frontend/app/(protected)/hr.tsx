@@ -1,44 +1,54 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
-import Sidebar from '../../src/components/Sidebar';
 import { useCacheStore } from '../../src/store/cacheStore';
+import Sidebar from '../../src/components/Sidebar';
 
 export default function HRScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { cache, setCache, loadCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [items, setItems] = useState<any[]>(cache['/users/'] || []);
-  const [total, setTotal] = useState(items.length);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Add Employee Modal State
-  const [modalOpen, setModalOpen] = useState(false);
+  const [items, setItems] = useState<any[]>(cache['/hr/users']?.items || []);
+  const [total, setTotal] = useState(cache['/hr/users']?.items?.length || 0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Add Employee Modal states
+  const [addModalVisible, setAddModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [form, setForm] = useState({
+  const [roles, setRoles] = useState<any[]>(cache['/hr/roles'] || []);
+  
+  const [newEmployee, setNewEmployee] = useState({
     fullName: '',
     email: '',
     password: '',
     roleId: '',
+    managerId: '',
+    highestQualification: '',
     personalMobile: '',
-    highestQualification: ''
+    homeMobile: ''
   });
 
   const roleUpper = user?.role?.toUpperCase();
-  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN';
+  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'MANAGER';
 
+  // Load cache on mount
   useEffect(() => {
     loadCache().then(() => {
-      if (cache['/users/']) {
-        setItems(cache['/users/']);
-        setTotal(cache['/users/'].length);
+      const cachedUsers = cache['/hr/users'];
+      if (cachedUsers && cachedUsers.items) {
+        setItems(cachedUsers.items);
+        setTotal(cachedUsers.items.length);
+      }
+      const cachedRoles = cache['/hr/roles'];
+      if (cachedRoles) {
+        setRoles(cachedRoles);
       }
     });
   }, []);
@@ -46,48 +56,59 @@ export default function HRScreen() {
   const load = useCallback(async () => {
     if (!isAdmin) return;
     try {
-      const data = await api.get<any[]>('/users/');
-      const arr = Array.isArray(data) ? data : (data as any).items || [];
+      const [uData, rData] = await Promise.all([
+        api.get<any[]>('/users/'),
+        api.get<any[]>('/roles').catch(() => [])
+      ]);
+      const arr = Array.isArray(uData) ? uData : (uData as any).items || [];
       setItems(arr);
       setTotal(arr.length);
-      setCache('/users/', arr);
-    } catch {}
-  }, [isAdmin, setCache]);
+      setCache('/hr/users', { items: arr });
 
-  const loadRoles = async () => {
-    try {
-      const data = await api.get<any[]>('/roles');
-      setRoles(data || []);
-      if (data && data.length > 0) {
-        setForm(prev => ({ ...prev, roleId: data[0].id }));
+      if (rData) {
+        setRoles(rData);
+        setCache('/hr/roles', rData);
       }
-    } catch {}
-  };
+    } catch (e) {
+      console.error('[HRScreen] Failed to load HR users', e);
+    }
+  }, [isAdmin, setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const handleCreate = async () => {
-    if (!form.fullName || !form.email || !form.password) {
-      Alert.alert('Error', 'Full Name, Email, and Password are required.');
+  const handleAddEmployee = async () => {
+    if (!newEmployee.fullName.trim() || !newEmployee.email.trim() || !newEmployee.password.trim()) {
+      Alert.alert('Error', 'Name, Email, and Password are required.');
       return;
     }
-
     setSaving(true);
     try {
       await api.post('/users/', {
-        fullName: form.fullName,
-        email: form.email,
-        password: form.password,
-        roleId: form.roleId || null,
-        personalMobile: form.personalMobile,
-        highestQualification: form.highestQualification
+        fullName: newEmployee.fullName.trim(),
+        email: newEmployee.email.trim().toLowerCase(),
+        password: newEmployee.password,
+        roleId: newEmployee.roleId || null,
+        managerId: newEmployee.managerId || null,
+        highestQualification: newEmployee.highestQualification.trim() || null,
+        personalMobile: newEmployee.personalMobile.trim() || null,
+        homeMobile: newEmployee.homeMobile.trim() || null
       });
-      setModalOpen(false);
-      Alert.alert('Success', 'Employee added successfully!');
+      setAddModalVisible(false);
+      setNewEmployee({
+        fullName: '',
+        email: '',
+        password: '',
+        roleId: '',
+        managerId: '',
+        highestQualification: '',
+        personalMobile: '',
+        homeMobile: ''
+      });
+      Alert.alert('Success', 'Employee created successfully!');
       load();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to add employee');
+      Alert.alert('Error', e.message || 'Failed to create employee');
     } finally {
       setSaving(false);
     }
@@ -96,6 +117,9 @@ export default function HRScreen() {
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
+        {/* Sidebar Component */}
+        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
         <View style={styles.header}>
           <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
             <Ionicons name="menu-outline" size={26} color={Colors.text} />
@@ -106,38 +130,33 @@ export default function HRScreen() {
           <Ionicons name="lock-closed" size={48} color={Colors.error} />
           <Text style={styles.emptyText}>You do not have permission to view this screen.</Text>
         </View>
-        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Sidebar Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>HR / Employees</Text>
-        <Text style={styles.count}>{total}</Text>
-        <Pressable style={styles.addBtn} onPress={() => {
-          setForm({
-            fullName: '',
-            email: '',
-            password: '',
-            roleId: '',
-            personalMobile: '',
-            highestQualification: ''
-          });
-          loadRoles();
-          setModalOpen(true);
-        }}>
-          <Ionicons name="add" size={22} color={Colors.primary} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <View style={styles.countBadge}><Text style={styles.countText}>{total}</Text></View>
+          <Pressable style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={22} color={Colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={i => i.id || Math.random().toString()}
+      {/* List */}
+      <FlatList 
+        data={items} 
+        keyExtractor={i => i.id} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
         ListEmptyComponent={
@@ -147,25 +166,22 @@ export default function HRScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const sc = StatusColors[item.status] || StatusColors.active;
+          const sc = item.isActive ? StatusColors.active : StatusColors.inactive || StatusColors.pending;
           return (
             <View style={styles.card}>
               <View style={styles.cardRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{(item.fullName || item.name || '?').charAt(0)}</Text>
-                </View>
+                <View style={styles.avatar}><Text style={styles.avatarText}>{(item.fullName || item.name || '?').charAt(0)}</Text></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{item.fullName || item.name}</Text>
-                  <Text style={styles.cardMeta}>
-                    {item.role?.name || item.role || 'No Role'} · {item.department || 'General'}
-                  </Text>
-                  <Text style={styles.cardMeta}>{item.email} · {item.personalMobile || item.phone || 'No Mobile'}</Text>
+                  <Text style={styles.cardMeta}>{item.role?.name || item.role || 'No Role'} · {item.highestQualification || 'Qualification N/A'}</Text>
+                  <Text style={styles.cardMeta}>{item.email} · {item.personalMobile || item.phone || 'No Phone'}</Text>
                 </View>
-                <View>
-                  <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                    <Text style={[styles.badgeText, { color: sc.text }]}>{item.status || 'Active'}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <View style={[styles.badge, { backgroundColor: item.isActive ? '#ECFDF5' : '#FEF2F2' }]}>
+                    <Text style={[styles.badgeText, { color: item.isActive ? '#047857' : '#B91C1C' }]}>
+                      {item.isActive ? 'Active' : 'Inactive'}
+                    </Text>
                   </View>
-                  <Text style={styles.salary}>₹{(item.salary || 0).toLocaleString()}/mo</Text>
                 </View>
               </View>
             </View>
@@ -173,24 +189,31 @@ export default function HRScreen() {
         }}
       />
 
-      {/* Add Employee Modal */}
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+      {/* ── Add Employee Modal ── */}
+      <Modal
+        visible={addModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Employee</Text>
-              <Pressable onPress={() => setModalOpen(false)} style={styles.closeBtn}>
+              <Text style={styles.modalTitle}>Create Employee Account</Text>
+              <Pressable onPress={() => setAddModalVisible(false)} style={styles.closeBtn}>
                 <Ionicons name="close" size={24} color={Colors.text} />
               </Pressable>
             </View>
+
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.field}>
                 <Text style={styles.label}>FULL NAME *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. Ramesh Patil"
-                  value={form.fullName}
-                  onChangeText={v => setForm({ ...form, fullName: v })}
+                  placeholder="e.g. KARAN MEHRA"
+                  placeholderTextColor={Colors.textLight}
+                  value={newEmployee.fullName}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, fullName: val })}
                 />
               </View>
 
@@ -198,11 +221,12 @@ export default function HRScreen() {
                 <Text style={styles.label}>EMAIL ADDRESS *</Text>
                 <TextInput
                   style={styles.input}
+                  placeholder="karan@example.com"
+                  placeholderTextColor={Colors.textLight}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholder="e.g. ramesh@example.com"
-                  value={form.email}
-                  onChangeText={v => setForm({ ...form, email: v })}
+                  value={newEmployee.email}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, email: val })}
                 />
               </View>
 
@@ -210,41 +234,34 @@ export default function HRScreen() {
                 <Text style={styles.label}>PASSWORD *</Text>
                 <TextInput
                   style={styles.input}
-                  secureTextEntry
                   placeholder="Minimum 6 characters"
-                  value={form.password}
-                  onChangeText={v => setForm({ ...form, password: v })}
+                  placeholderTextColor={Colors.textLight}
+                  secureTextEntry
+                  value={newEmployee.password}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, password: val })}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>ROLE</Text>
-                <View style={styles.typeSelector}>
-                  {roles.map(r => (
-                    <Pressable
-                      key={r.id}
-                      style={[styles.typeOption, form.roleId === r.id && styles.typeOptionActive]}
-                      onPress={() => setForm({ ...form, roleId: r.id })}
-                    >
-                      <Text style={[styles.typeOptionText, form.roleId === r.id && styles.typeOptionTextActive]}>
-                        {r.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                  {roles.length === 0 && (
-                    <Text style={styles.noPerms}>Loading roles...</Text>
-                  )}
-                </View>
+                <Text style={styles.label}>ROLE ID (OPTIONAL UUID)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Paste Role UUID"
+                  placeholderTextColor={Colors.textLight}
+                  value={newEmployee.roleId}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, roleId: val })}
+                />
+                <Text style={styles.hint}>Available Roles: {roles.map(r => `${r.name} (${r.id.substring(0, 4)}...)`).join(', ')}</Text>
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>MOBILE NUMBER</Text>
+                <Text style={styles.label}>MANAGER ID (OPTIONAL UUID)</Text>
                 <TextInput
                   style={styles.input}
-                  keyboardType="phone-pad"
-                  placeholder="e.g. 9876543210"
-                  value={form.personalMobile}
-                  onChangeText={v => setForm({ ...form, personalMobile: v })}
+                  placeholder="Paste Manager User UUID"
+                  placeholderTextColor={Colors.textLight}
+                  value={newEmployee.managerId}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, managerId: val })}
                 />
               </View>
 
@@ -253,43 +270,60 @@ export default function HRScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. MBA, B.Tech"
-                  value={form.highestQualification}
-                  onChangeText={v => setForm({ ...form, highestQualification: v })}
+                  placeholderTextColor={Colors.textLight}
+                  value={newEmployee.highestQualification}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, highestQualification: val })}
                 />
               </View>
 
-              <Pressable style={styles.submitBtn} onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Add Employee</Text>}
+              <View style={styles.field}>
+                <Text style={styles.label}>PERSONAL MOBILE</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="10-digit number"
+                  placeholderTextColor={Colors.textLight}
+                  keyboardType="phone-pad"
+                  value={newEmployee.personalMobile}
+                  onChangeText={(val) => setNewEmployee({ ...newEmployee, personalMobile: val })}
+                />
+              </View>
+
+              <Pressable style={styles.submitBtn} onPress={handleAddEmployee} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>Create Employee</Text>
+                )}
               </Pressable>
             </ScrollView>
           </View>
         </View>
       </Modal>
-
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md, backgroundColor: '#FFFFFF' },
   menuBtn: { padding: Spacing.xs },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
-  count: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, paddingVertical: 2, borderRadius: BorderRadius.sm },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  countBadge: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.md, minWidth: 32, alignItems: 'center' },
+  countText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.primary },
   addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, padding: Spacing.lg },
+  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.lg, marginHorizontal: Spacing.md, marginBottom: Spacing.sm },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.white },
-  cardName: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  cardMeta: { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 2 },
+  cardName: { fontSize: FontSize.lg - 2, fontWeight: '800', color: Colors.text },
+  cardMeta: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   badge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm, alignSelf: 'flex-end' },
   badgeText: { fontSize: FontSize.xs, fontWeight: '700', textTransform: 'capitalize' },
-  salary: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, marginTop: Spacing.xs, textAlign: 'right' },
   empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
-  emptyText: { fontSize: FontSize.md, color: Colors.textLight, fontWeight: '600', textAlign: 'center', paddingHorizontal: Spacing.xl },
-  // Modal Styles
+  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+
+  // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '80%', padding: Spacing.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
@@ -297,15 +331,9 @@ const styles = StyleSheet.create({
   closeBtn: { padding: Spacing.xs },
   modalBody: { flex: 1, marginTop: Spacing.lg },
   field: { marginBottom: Spacing.md },
-  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textLight, letterSpacing: 1, marginBottom: Spacing.xs },
-  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 48, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
-  typeSelector: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: Colors.surface, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, padding: 4, gap: 4 },
-  typeOption: { minWidth: 80, height: 38, justifyContent: 'center', alignItems: 'center', borderRadius: BorderRadius.sm, paddingHorizontal: Spacing.sm },
-  typeOptionActive: { backgroundColor: Colors.primaryLight },
-  typeOptionText: { fontSize: FontSize.sm - 1, fontWeight: '700', color: Colors.textLight, textTransform: 'capitalize' },
-  typeOptionTextActive: { color: Colors.primary, fontWeight: '800' },
-  noPerms: { fontSize: FontSize.sm, color: Colors.textLight, fontStyle: 'italic', padding: Spacing.sm },
-  submitBtn: { backgroundColor: Colors.primary, height: 48, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.md, marginBottom: Spacing.xl },
-  submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.md }
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  hint: { fontSize: 10, color: Colors.textLight, marginTop: 4 },
+  submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
 });
-

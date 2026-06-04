@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl, Dimensions, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -6,26 +6,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/utils/api';
+import { useCacheStore } from '../../src/store/cacheStore';
 import AppFooter from '../../src/components/AppFooter';
 import Sidebar from '../../src/components/Sidebar';
-import { useCacheStore } from '../../src/store/cacheStore';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - (Spacing.lg * 2) - Spacing.md) / 2;
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { cache, setCache, loadCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [stats, setStats] = useState<any>(cache['/dashboard/stats'] || { leads: 0, revenue: 0, pending: 0, claims: 0 });
-  const [items, setItems] = useState<any[]>(cache['/notifications'] || []);
+  
+  const [stats, setStats] = useState<any>(
+    cache['/dashboard/stats']?.stats || { leads: 0, revenue: 0, pending: 0, claims: 0 }
+  );
+  const [items, setItems] = useState<any[]>(
+    cache['/dashboard/stats']?.items || []
+  );
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
+  // Hydrate cache on mount
+  React.useEffect(() => {
     loadCache().then(() => {
-      if (cache['/dashboard/stats']) setStats(cache['/dashboard/stats']);
-      if (cache['/notifications']) setItems(cache['/notifications']);
+      const cached = cache['/dashboard/stats'];
+      if (cached) {
+        if (cached.stats) setStats(cached.stats);
+        if (cached.items) setItems(cached.items);
+      }
     });
   }, []);
 
@@ -62,15 +71,14 @@ export default function DashboardScreen() {
         }
       }
 
-      const freshStats = { leads, revenue, pending, claims };
-      const freshItems = nData.notifications || [];
-      
-      setStats(freshStats);
-      setItems(freshItems);
-      setCache('/dashboard/stats', freshStats);
-      setCache('/notifications', freshItems);
-    } catch {
-      // Keep cached data on failure
+      const newStats = { ...sData, leads, revenue, pending, claims };
+      const newItems = nData.notifications || [];
+
+      setStats(newStats);
+      setItems(newItems);
+      setCache('/dashboard/stats', { stats: newStats, items: newItems });
+    } catch (e) {
+      console.warn('Dashboard load error:', e);
     }
   }, [setCache]);
 
@@ -82,84 +90,65 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
-  const allModules = [
-    { name: 'Leads',      icon: 'people',           color: '#3b82f6', route: '/(protected)/leads',      permission: 'lead.view' },
-    { name: 'Finance',    icon: 'wallet',            color: '#10b981', route: '/(protected)/finance',    permission: 'accounts.view' },
-    { name: 'CRM',        icon: 'person-add',        color: '#8b5cf6', route: '/(protected)/crm',        permission: 'crm.view' },
-    { name: 'Claims',     icon: 'document-text',     color: '#f59e0b', route: '/(protected)/claims',     permission: 'claims.view' },
-    { name: 'Visits',     icon: 'location',          color: '#f43f5e', route: '/(protected)/visits',     permission: 'visit.view' },
-    { name: 'RTO',        icon: 'car',               color: '#ef4444', route: '/(protected)/rto',        permission: 'rto.view' },
-    { name: 'Fitness',    icon: 'fitness',           color: '#06b6d4', route: '/(protected)/fitness',    permission: 'fitness.view' },
-    { name: 'Quotations', icon: 'clipboard',         color: '#6366f1', route: '/(protected)/quotations',  permission: 'quotation.view' },
-    { name: 'HR',         icon: 'people-circle',     color: '#ec4899', route: '/(protected)/hr',         permission: 'hr.view' },
-    { name: 'Loans',      icon: 'cash',              color: '#84cc16', route: '/(protected)/loans',      permission: 'loan.view' },
-    { name: 'Users',      icon: 'person',            color: '#14b8a6', route: '/(protected)/users',      permission: 'users.view' },
-    { name: 'Settings',   icon: 'settings',          color: '#94a3b8', route: '/(protected)/settings' },
-    { name: 'Alerts',     icon: 'notifications',     color: '#f97316', route: '/(protected)/notifications' },
-  ];
-
-  const modules = allModules.filter(m => {
-    if (!m.permission) return true;
-    const roleUpper = user?.role?.toUpperCase();
-    if (roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN') return true;
-    return user?.permissions?.includes(m.permission);
-  });
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER ADMIN';
 
   return (
-    // edges={['top']} — footer handles bottom safe area itself
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Sidebar Modal Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+          <Ionicons name="menu-outline" size={26} color={Colors.text} />
+        </Pressable>
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.greeting}>Welcome back,</Text>
+          <Text style={styles.userName}>{user?.full_name || user?.name || 'Admin'}</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <Pressable onPress={() => router.push('/(protected)/notifications')} style={styles.iconBtn}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+            <View style={styles.notifDot} />
+          </Pressable>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => setSidebarOpen(true)} style={{ paddingRight: Spacing.md, justifyContent: 'center' }}>
-            <Ionicons name="menu-outline" size={28} color={Colors.text} />
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.full_name || user?.name || 'Admin'}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => router.push('/(protected)/notifications')} style={styles.iconBtn}>
-              <Ionicons name="notifications-outline" size={22} color={Colors.text} />
-              <View style={styles.notifDot} />
-            </Pressable>
-            <Pressable onPress={logout} style={[styles.iconBtn, { backgroundColor: Colors.errorBg }]}>
-              <Ionicons name="log-out-outline" size={22} color={Colors.error} />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Stats */}
+        {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <StatCard icon="people"           value={stats.leads}              label="Leads"   color="#3b82f6" />
-          <StatCard icon="trending-up"      value={`₹${stats.revenue ?? 0}`} label="Revenue" color="#10b981" />
-          <StatCard icon="time"             value={stats.pending}            label="Pending" color="#f59e0b" />
-          <StatCard icon="shield-checkmark" value={stats.claims}             label="Claims"  color="#ef4444" />
+          {isAdmin ? (
+            <>
+              <StatCard icon="people"           value={stats.total_leads ?? 0}    label="Total Leads"   color="#3b82f6" />
+              <StatCard icon="people-circle"    value={stats.total_employees ?? 0} label="Total Staff"   color="#ec4899" />
+              <StatCard icon="shield-checkmark" value={stats.active_policies ?? 0} label="Active Policies" color="#10b981" />
+              <StatCard icon="document-text"    value={stats.active_claims ?? 0}   label="Active Claims"  color="#ef4444" />
+              <StatCard icon="car"              value={stats.pending_rto ?? 0}     label="Pending RTO"    color="#f59e0b" />
+              <StatCard icon="fitness"          value={stats.pending_fitness ?? 0} label="Pending Fitness" color="#06b6d4" />
+              <StatCard icon="cash"             value={stats.active_loans ?? 0}    label="Active Loans"   color="#84cc16" />
+              <StatCard icon="person-add"       value={stats.total_customers ?? 0} label="Customers"      color="#8b5cf6" />
+              <StatCard icon="location"         value={stats.today_visits ?? 0}    label="Today's Visits" color="#f43f5e" />
+            </>
+          ) : (
+            <>
+              <StatCard icon="people"           value={stats.leads}              label="Leads"   color="#3b82f6" />
+              <StatCard icon="trending-up"      value={`₹${stats.revenue ?? 0}`} label="Revenue" color="#10b981" />
+              <StatCard icon="time"             value={stats.pending}            label="Pending" color="#f59e0b" />
+              <StatCard icon="shield-checkmark" value={stats.claims}             label="Claims"  color="#ef4444" />
+            </>
+          )}
         </View>
 
-        {/* Modules */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Main Modules</Text>
-        </View>
-        <View style={styles.moduleGrid}>
-          {modules.map((m) => (
-            <Pressable
-              key={m.name}
-              style={({ pressed }) => [styles.moduleCard, pressed && { opacity: 0.75, transform: [{ scale: 0.97 }] }]}
-              onPress={() => router.push(m.route as any)}
-            >
-              <View style={[styles.moduleIcon, { backgroundColor: m.color + '18' }]}>
-                <Ionicons name={m.icon as any} size={26} color={m.color} />
-              </View>
-              <Text style={styles.moduleName}>{m.name}</Text>
-            </Pressable>
-          ))}
+        {/* Quick Info text */}
+        <View style={styles.infoBanner}>
+          <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+          <Text style={styles.infoBannerText}>Swipe from the left edge or tap the menu to view all modules.</Text>
         </View>
 
         {/* Recent Updates */}
@@ -195,9 +184,6 @@ export default function DashboardScreen() {
 
       {/* Sticky Footer */}
       <AppFooter active="home" />
-
-      {/* Sliding Sidebar */}
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -229,15 +215,22 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  greeting:      { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '500' },
-  userName:      { fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text, marginTop: 1 },
+  menuBtn: {
+    padding: Spacing.xs,
+    marginRight: Spacing.sm
+  },
+  headerTitleWrap: {
+    flex: 1
+  },
+  greeting:      { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '500' },
+  userName:      { fontSize: FontSize.xl, fontWeight: '900', color: Colors.text, marginTop: 1 },
   headerActions: { flexDirection: 'row', gap: Spacing.sm },
   iconBtn: {
-    width: 42, height: 42, borderRadius: 12,
+    width: 40, height: 40, borderRadius: 12,
     backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: Colors.border,
   },
@@ -258,23 +251,21 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4, gap: 2,
   },
   statValue: { fontSize: FontSize.xl, fontWeight: '900', color: Colors.text, marginTop: 4 },
-  statLabel: { fontSize: FontSize.xs, color: Colors.textLight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statLabel: { fontSize: FontSize.xs - 1, color: Colors.textLight, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  infoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    backgroundColor: Colors.primaryLight, padding: Spacing.md,
+    borderRadius: BorderRadius.md, marginHorizontal: Spacing.lg, marginTop: Spacing.xl
+  },
+  infoBannerText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600', flex: 1 },
 
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: Spacing.xl, marginTop: Spacing.xxl, marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.xl, marginTop: Spacing.xl, marginBottom: Spacing.md,
   },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   seeAll:       { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '700' },
-
-  moduleGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.lg, gap: Spacing.md },
-  moduleCard: {
-    width: CARD_WIDTH, backgroundColor: Colors.surface,
-    paddingVertical: Spacing.xl, borderRadius: BorderRadius.xl,
-    alignItems: 'center', borderWidth: 1, borderColor: Colors.border, gap: Spacing.sm,
-  },
-  moduleIcon: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  moduleName: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
 
   activityList: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },
   activityItem: {
@@ -283,7 +274,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Colors.border,
   },
   activityIcon:    { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  activityText:    { fontSize: FontSize.md, fontWeight: '600', color: Colors.text },
+  activityText:    { fontSize: FontSize.md - 1, fontWeight: '600', color: Colors.text },
   activityTime:    { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 2 },
   noActivity:      { alignItems: 'center', paddingVertical: Spacing.xxl, gap: Spacing.sm },
   noActivityText:  { fontSize: FontSize.sm, color: Colors.textLight },

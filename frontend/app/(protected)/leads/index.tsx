@@ -1,26 +1,28 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useCacheStore } from '../../../src/store/cacheStore';
 import AppFooter from '../../../src/components/AppFooter';
 import Sidebar from '../../../src/components/Sidebar';
-import { useCacheStore } from '../../../src/store/cacheStore';
 
 export default function LeadsScreen() {
   const router = useRouter();
   const { cache, setCache, loadCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [items, setItems] = useState<any[]>(cache['/leads']?.leads || []);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadCache().then(() => {
-      if (cache['/leads']?.leads) {
-        setItems(cache['/leads'].leads);
+      const cached = cache['/leads'];
+      if (cached && cached.leads) {
+        setItems(cached.leads);
       }
     });
   }, []);
@@ -28,9 +30,9 @@ export default function LeadsScreen() {
   const load = useCallback(async () => {
     try {
       const res = await api.get<any>('/leads');
-      const leadsList = res.leads || [];
-      setItems(leadsList);
-      setCache('/leads', res);
+      const leads = res.leads || [];
+      setItems(leads);
+      setCache('/leads', { leads });
     } catch (e) {
       console.error('[LeadsScreen] Failed to load leads', e);
     }
@@ -57,7 +59,7 @@ export default function LeadsScreen() {
           return Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`);
         });
       } catch (err) {
-        console.error('Failed to send WhatsApp', err);
+        console.warn('WhatsApp launch error:', err);
       }
     }
   };
@@ -72,9 +74,12 @@ export default function LeadsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      {/* Sidebar Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>My Leads</Text>
@@ -185,9 +190,6 @@ export default function LeadsScreen() {
 
       {/* Sticky Footer */}
       <AppFooter active="leads" />
-
-      {/* Sliding Sidebar */}
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     backgroundColor: '#FFFFFF', gap: Spacing.md,
   },
-  backBtn:  { padding: Spacing.xs },
+  menuBtn:  { padding: Spacing.xs },
   title:    { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
   addBtn:   { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
   searchRow:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, gap: Spacing.sm, backgroundColor: '#FFFFFF' },

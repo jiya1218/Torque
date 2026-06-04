@@ -1,12 +1,12 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, Animated, Dimensions, ScrollView } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+import { View, Text, StyleSheet, Pressable, Modal, Animated, Dimensions, ScrollView, Image } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '../utils/theme';
 import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
-const DRAWER_WIDTH = width * 0.78;
+const DRAWER_WIDTH = width * 0.75;
 
 interface SidebarProps {
   visible: boolean;
@@ -15,7 +15,6 @@ interface SidebarProps {
 
 export default function Sidebar({ visible, onClose }: SidebarProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const { user, logout } = useAuth();
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
@@ -34,6 +33,8 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
       }).start();
     }
   }, [visible]);
+
+  if (!visible) return null;
 
   const MENU_GROUPS = [
     {
@@ -59,54 +60,25 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
         { name: 'Claims', icon: 'document-text-outline', route: '/(protected)/claims' },
         { name: 'Loans', icon: 'cash-outline', route: '/(protected)/loans' },
         { name: 'RTO Work', icon: 'car-outline', route: '/(protected)/rto' },
-        { name: 'Fitness', icon: 'analytics-outline', route: '/(protected)/fitness' },
+        { name: 'Fitness', icon: 'fitness-outline', route: '/(protected)/fitness' },
       ]
     },
     {
       label: 'MANAGEMENT',
       items: [
-        { name: 'Users', icon: 'people-circle-outline', route: '/(protected)/users' },
-        { name: 'Roles & Permissions', icon: 'lock-closed-outline', route: '/(protected)/roles' },
+        { name: 'Users', icon: 'person-outline', route: '/(protected)/users' },
+        { name: 'Roles & Permissions', icon: 'ribbon-outline', route: '/(protected)/roles' },
         { name: 'Data Approvals', icon: 'checkbox-outline', route: '/(protected)/data-approvals' },
         { name: 'Finance', icon: 'wallet-outline', route: '/(protected)/finance' },
-        { name: 'HR', icon: 'ribbon-outline', route: '/(protected)/hr' },
-        { name: 'Lead Responses', icon: 'chatbox-ellipses-outline', route: '/(protected)/lead-responses' },
-        { name: 'Settings', icon: 'settings-outline', route: '/(protected)/settings' },
+        { name: 'HR', icon: 'people-circle-outline', route: '/(protected)/hr' },
+        { name: 'Lead Responses', icon: 'settings-outline', route: '/(protected)/responses' },
       ]
     }
   ];
 
-  const role = (user?.role || 'EXECUTIVE').toUpperCase();
-  const isExecutive = role.endsWith('EXECUTIVE') || role === 'VIEWER';
-
-  const filteredGroups = MENU_GROUPS.map(group => {
-    let items = [...group.items];
-
-    if (isExecutive) {
-      if (group.label === 'MANAGEMENT') return null;
-      if (group.label === 'OPERATIONS') {
-        items = items.filter(i => ['Claims', 'Loans'].includes(i.name));
-      }
-      items = items.filter(i => !['CRM'].includes(i.name));
-    } else if (role === 'MANAGER') {
-      if (group.label === 'OPERATIONS') return null;
-      if (group.label === 'SALES') {
-        items = items.filter(i => ['Leads', 'CRM', 'Quotations', 'Follow-ups'].includes(i.name));
-      }
-      if (group.label === 'MANAGEMENT') {
-        items = items.filter(i => ['Users', 'Settings'].includes(i.name));
-      }
-    }
-
-    return { ...group, items };
-  }).filter(Boolean) as typeof MENU_GROUPS;
-
   const handleNavigate = (route: string) => {
     onClose();
-    // Prevent navigating to the exact same screen
-    if (pathname !== route) {
-      router.push(route as any);
-    }
+    router.push(route as any);
   };
 
   const handleLogout = async () => {
@@ -117,50 +89,49 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
   return (
     <Modal transparent visible={visible} onRequestClose={onClose} animationType="none">
       <View style={styles.container}>
+        {/* Backdrop */}
         <Pressable style={styles.backdrop} onPress={onClose} />
+
+        {/* Drawer Content */}
         <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.logoRow}>
-              <Ionicons name="compass" size={26} color={Colors.primary} />
-              <Text style={styles.appName}>TORQUE</Text>
+            <View style={styles.logoWrap}>
+              <Image 
+                source={require('../../assets/images/logo.png')} 
+                style={styles.logoImage} 
+                resizeMode="contain"
+              />
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text} />
             </Pressable>
           </View>
+
+          {/* Navigation Links */}
           <ScrollView style={styles.menu} showsVerticalScrollIndicator={false}>
-            {filteredGroups.map((group) => (
+            {MENU_GROUPS.map((group) => (
               <View key={group.label} style={styles.group}>
                 <Text style={styles.groupLabel}>{group.label}</Text>
-                {group.items.map((item) => {
-                  const isActive = pathname.startsWith(item.route.replace('/(protected)', ''));
-                  return (
-                    <Pressable
-                      key={item.name}
-                      style={[styles.menuItem, isActive && styles.menuItemActive]}
-                      onPress={() => handleNavigate(item.route)}
-                    >
-                      <Ionicons
-                        name={item.icon as any}
-                        size={20}
-                        color={isActive ? Colors.primary : Colors.textLight}
-                        style={styles.menuIcon}
-                      />
-                      <Text style={[styles.menuText, isActive && styles.menuTextActive]}>
-                        {item.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {group.items.map((item) => (
+                  <Pressable
+                    key={item.name}
+                    style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
+                    onPress={() => handleNavigate(item.route)}
+                  >
+                    <Ionicons name={item.icon as any} size={20} color={Colors.primary} style={styles.menuIcon} />
+                    <Text style={styles.menuText}>{item.name}</Text>
+                  </Pressable>
+                ))}
               </View>
             ))}
           </ScrollView>
+
+          {/* Footer */}
           <View style={styles.footer}>
-            <View style={styles.userInfo}>
-              <Text style={styles.userLabel}>Logged in as</Text>
-              <Text style={styles.userName} numberOfLines={1}>{user?.full_name || user?.name || 'User'}</Text>
-              <Text style={styles.userRole}>{user?.role || 'Executive'}</Text>
-            </View>
+            <Text style={styles.userLabel}>Logged in as</Text>
+            <Text style={styles.userName} numberOfLines={1}>{user?.full_name || user?.name || 'User'}</Text>
+            <Text style={styles.userRole}>{user?.role || 'Executive'}</Text>
             <Pressable style={styles.logoutBtn} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={18} color={Colors.error} />
               <Text style={styles.logoutText}>Logout</Text>
@@ -174,58 +145,52 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  drawer: {
-    width: DRAWER_WIDTH,
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderTopRightRadius: BorderRadius.xl,
-    borderBottomRightRadius: BorderRadius.xl,
-    shadowColor: '#000',
-    shadowOffset: { width: 6, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 20
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.4)' },
+  drawer: { 
+    width: DRAWER_WIDTH, 
+    height: '100%', 
+    backgroundColor: Colors.background, 
+    borderTopRightRadius: BorderRadius.lg, 
+    borderBottomRightRadius: BorderRadius.lg, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 4, height: 0 }, 
+    shadowOpacity: 0.15, 
+    shadowRadius: 10, 
+    elevation: 16 
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl + 10,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: Spacing.lg, 
+    paddingVertical: Spacing.md, 
+    borderBottomWidth: 1, 
+    borderBottomColor: Colors.border, 
+    backgroundColor: 'transparent' // Background transparent for the logo
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  appName: { fontSize: FontSize.xl, fontWeight: '900', color: Colors.primary, letterSpacing: 1.5 },
+  logoWrap: { 
+    backgroundColor: 'transparent', // Ensure no white box background highlights the logo
+    flex: 1,
+    height: 48,
+    justifyContent: 'center'
+  },
+  logoImage: { 
+    width: 140, 
+    height: 38,
+    backgroundColor: 'transparent'
+  },
   closeBtn: { padding: Spacing.xs },
-  menu: { flex: 1, paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm },
-  group: { marginBottom: Spacing.md },
-  groupLabel: { fontSize: 10, fontWeight: '800', color: Colors.textLight, letterSpacing: 1.5, marginBottom: Spacing.xs, paddingHorizontal: Spacing.md },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: 2
-  },
-  menuItemActive: { backgroundColor: Colors.primaryLight },
+  menu: { flex: 1, padding: Spacing.md },
+  group: { marginBottom: Spacing.lg },
+  groupLabel: { fontSize: 10, fontWeight: '800', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.sm, paddingHorizontal: Spacing.sm },
+  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.md, marginBottom: 2 },
+  menuItemPressed: { backgroundColor: Colors.surfaceMuted },
   menuIcon: { marginRight: Spacing.md },
-  menuText: { fontSize: FontSize.sm + 1, fontWeight: '600', color: Colors.text },
-  menuTextActive: { color: Colors.primary, fontWeight: '800' },
-  footer: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: '#FAFAFA'
-  },
-  userInfo: { marginBottom: Spacing.md },
-  userLabel: { fontSize: 9, fontWeight: '700', color: Colors.textLight, textTransform: 'uppercase' },
-  userName: { fontSize: FontSize.md - 1, fontWeight: '800', color: Colors.text, marginTop: 1 },
+  menuText: { fontSize: FontSize.md - 1, fontWeight: '600', color: Colors.text },
+  footer: { padding: Spacing.lg, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: 'transparent' },
+  userLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase' },
+  userName: { fontSize: FontSize.md, fontWeight: '800', color: Colors.text, marginTop: 2 },
   userRole: { fontSize: 10, fontWeight: '600', color: Colors.primary, marginTop: 1, textTransform: 'uppercase' },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.xs },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.md, paddingVertical: Spacing.sm },
   logoutText: { color: Colors.error, fontSize: FontSize.sm, fontWeight: '700' },
 });

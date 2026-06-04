@@ -24,14 +24,6 @@ export async function POST(req: NextRequest) {
     })
     const hadRemark = !!existingUser?.onboardingRemark
 
-    // Delete existing documents for this user first to avoid duplicates
-    await prisma.document.deleteMany({
-      where: {
-        entityType: 'User',
-        entityId: context!.userId
-      }
-    })
-
     // Update user profile
     const user = await prisma.user.update({
       where: { id: context!.userId },
@@ -54,21 +46,28 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Forward response to Google Drive Apps Script Webhook (asynchronously)
-    const driveWebhook = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
-    if (driveWebhook) {
-      fetch(driveWebhook, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          personalMobile,
-          dateOfBirth,
-          highestQualification,
-          joiningDate,
-          homeMobile,
-          documents
-        })
-      }).catch((e) => console.warn('[submit-form] Google Drive webhook failed:', e));
+    // Archive webhook forwarding to Google Drive Apps Script
+    const webhookUrl = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            highestQualification,
+            dateOfBirth,
+            joiningDate,
+            personalMobile,
+            homeMobile,
+            documents
+          })
+        });
+      } catch (webhookErr) {
+        console.error('[submit-form] Google Drive webhook failed:', webhookErr);
+      }
     }
 
     return NextResponse.json({

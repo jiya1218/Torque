@@ -1,38 +1,42 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
-import Sidebar from '../../src/components/Sidebar';
 import { useCacheStore } from '../../src/store/cacheStore';
+import Sidebar from '../../src/components/Sidebar';
 
 export default function RTOScreen() {
   const router = useRouter();
   const { cache, setCache, loadCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [items, setItems] = useState<any[]>(cache['/workflow/rto'] || []);
-  const [total, setTotal] = useState(items.length);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Add RTO Modal State
-  const [modalOpen, setModalOpen] = useState(false);
+  const [items, setItems] = useState<any[]>(cache['/workflow/rto']?.items || []);
+  const [total, setTotal] = useState(cache['/workflow/rto']?.items?.length || 0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Add RTO Modal states
+  const [addModalVisible, setAddModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [newRto, setNewRto] = useState({
     customerName: '',
     vehicleNumber: '',
-    workType: 'registration',
+    workType: '',
     rtoOffice: '',
     fees: '',
-    dueDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0] // 7 days from now
+    dueDate: '',
+    leadId: ''
   });
 
+  // Load cache on mount
   useEffect(() => {
     loadCache().then(() => {
-      if (cache['/workflow/rto']) {
-        setItems(cache['/workflow/rto']);
-        setTotal(cache['/workflow/rto'].length);
+      const cached = cache['/workflow/rto'];
+      if (cached && cached.items) {
+        setItems(cached.items);
+        setTotal(cached.items.length);
       }
     });
   }, []);
@@ -43,39 +47,37 @@ export default function RTOScreen() {
       const arr = Array.isArray(data) ? data : (data as any).items || [];
       setItems(arr);
       setTotal(arr.length);
-      setCache('/workflow/rto', arr);
-    } catch {}
+      setCache('/workflow/rto', { items: arr });
+    } catch (e) {
+      console.error('[RTOScreen] Failed to load RTO work', e);
+    }
   }, [setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const handleCreate = async () => {
-    if (!form.customerName || !form.vehicleNumber || !form.fees) {
-      Alert.alert('Error', 'Customer Name, Vehicle Number, and Fees are required.');
+  const handleAddRto = async () => {
+    if (!newRto.customerName.trim() || !newRto.workType.trim()) {
+      Alert.alert('Error', 'Customer Name and Work Type are required.');
       return;
     }
-    const amt = parseFloat(form.fees);
-    if (isNaN(amt) || amt < 0) {
-      Alert.alert('Error', 'Please enter a valid fees amount.');
-      return;
-    }
-
     setSaving(true);
     try {
       await api.post('/workflow/rto', {
-        customerName: form.customerName,
-        vehicleNumber: form.vehicleNumber,
-        workType: form.workType,
-        rtoOffice: form.rtoOffice,
-        fees: amt,
-        dueDate: form.dueDate
+        customerName: newRto.customerName.trim(),
+        vehicleNumber: newRto.vehicleNumber.trim() || null,
+        workType: newRto.workType.trim(),
+        rtoOffice: newRto.rtoOffice.trim() || null,
+        fees: newRto.fees ? parseFloat(newRto.fees) : null,
+        dueDate: newRto.dueDate ? new Date(newRto.dueDate).toISOString() : null,
+        leadId: newRto.leadId || null
       });
-      setModalOpen(false);
-      Alert.alert('Success', 'RTO work entry added successfully!');
+      setAddModalVisible(false);
+      setNewRto({ customerName: '', vehicleNumber: '', workType: '', rtoOffice: '', fees: '', dueDate: '', leadId: '' });
+      Alert.alert('Success', 'RTO Work created successfully!');
       load();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to add RTO work');
+      Alert.alert('Error', e.message || 'Failed to create RTO work');
     } finally {
       setSaving(false);
     }
@@ -83,30 +85,27 @@ export default function RTOScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Sidebar Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>RTO Work</Text>
-        <Text style={styles.count}>{total}</Text>
-        <Pressable style={styles.addBtn} onPress={() => {
-          setForm({
-            customerName: '',
-            vehicleNumber: '',
-            workType: 'registration',
-            rtoOffice: '',
-            fees: '',
-            dueDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0]
-          });
-          setModalOpen(true);
-        }}>
-          <Ionicons name="add" size={22} color={Colors.primary} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          <View style={styles.countBadge}><Text style={styles.countText}>{total}</Text></View>
+          <Pressable style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={22} color={Colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={i => i.id || Math.random().toString()}
+      {/* List */}
+      <FlatList 
+        data={items} 
+        keyExtractor={i => i.id} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
         ListEmptyComponent={
@@ -122,137 +121,152 @@ export default function RTOScreen() {
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{item.customerName || item.customer_name}</Text>
-                  <Text style={styles.cardMeta}>
-                    {item.vehicleNumber || item.vehicle_number} · {(item.workType || item.work_type)?.replace(/_/g, ' ')}
-                  </Text>
+                  <Text style={styles.cardMeta}>{item.vehicleNumber || item.vehicle_number} · {(item.workType || item.work_type)?.replace(/_/g, ' ')}</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                  <Text style={[styles.badgeText, { color: sc.text }]}>{item.status?.replace(/_/g, ' ')}</Text>
-                </View>
+                <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status?.replace(/_/g, ' ')}</Text></View>
               </View>
               <View style={styles.cardBottom}>
                 <Text style={styles.amount}>₹{(item.fees || 0).toLocaleString()}</Text>
-                <Text style={styles.cardDate}>
-                  {item.dueDate || item.due_date ? `Due: ${(item.dueDate || item.due_date).split('T')[0]}` : ''}
-                </Text>
+                <Text style={styles.cardDate}>{item.dueDate || item.due_date ? `Due: ${new Date(item.dueDate || item.due_date).toLocaleDateString()}` : ''}</Text>
               </View>
             </View>
           );
         }}
       />
 
-      {/* Add RTO Modal */}
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+      {/* ── Add RTO Modal ── */}
+      <Modal
+        visible={addModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setNewRto({ customerName: '', vehicleNumber: '', workType: '', rtoOffice: '', fees: '', dueDate: '', leadId: '' })}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add RTO Work</Text>
-              <Pressable onPress={() => setModalOpen(false)} style={styles.closeBtn}>
+              <Text style={styles.modalTitle}>Create RTO Work</Text>
+              <Pressable onPress={() => setAddModalVisible(false)} style={styles.closeBtn}>
                 <Ionicons name="close" size={24} color={Colors.text} />
               </Pressable>
             </View>
+
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.field}>
                 <Text style={styles.label}>CUSTOMER NAME *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. Anand Vyas"
-                  value={form.customerName}
-                  onChangeText={v => setForm({ ...form, customerName: v })}
+                  placeholder="e.g. MEHRA KARAN"
+                  placeholderTextColor={Colors.textLight}
+                  value={newRto.customerName}
+                  onChangeText={(val) => setNewRto({ ...newRto, customerName: val })}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>VEHICLE NUMBER *</Text>
+                <Text style={styles.label}>VEHICLE NUMBER</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. GJ-01-XX-9999"
+                  placeholder="e.g. GJ-01-XX-0000"
+                  placeholderTextColor={Colors.textLight}
                   autoCapitalize="characters"
-                  value={form.vehicleNumber}
-                  onChangeText={v => setForm({ ...form, vehicleNumber: v })}
+                  value={newRto.vehicleNumber}
+                  onChangeText={(val) => setNewRto({ ...newRto, vehicleNumber: val })}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>WORK TYPE</Text>
-                <View style={styles.typeSelector}>
-                  {['registration', 'transfer', 'hsrp', 'permit'].map(t => (
-                    <Pressable
-                      key={t}
-                      style={[styles.typeOption, form.workType === t && styles.typeOptionActive]}
-                      onPress={() => setForm({ ...form, workType: t })}
-                    >
-                      <Text style={[styles.typeOptionText, form.workType === t && styles.typeOptionTextActive]}>
-                        {t}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+                <Text style={styles.label}>WORK TYPE *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Tax Payment, Transfer, Renewal"
+                  placeholderTextColor={Colors.textLight}
+                  value={newRto.workType}
+                  onChangeText={(val) => setNewRto({ ...newRto, workType: val })}
+                />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>RTO OFFICE</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g. RTO Ahmedabad (East)"
-                  value={form.rtoOffice}
-                  onChangeText={v => setForm({ ...form, rtoOffice: v })}
+                  placeholder="e.g. Ahmedabad RTO"
+                  placeholderTextColor={Colors.textLight}
+                  value={newRto.rtoOffice}
+                  onChangeText={(val) => setNewRto({ ...newRto, rtoOffice: val })}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>FEES (₹) *</Text>
+                <Text style={styles.label}>FEES (ESTIMATED)</Text>
                 <TextInput
                   style={styles.input}
+                  placeholder="₹ 0.00"
+                  placeholderTextColor={Colors.textLight}
                   keyboardType="numeric"
-                  placeholder="e.g. 1500"
-                  value={form.fees}
-                  onChangeText={v => setForm({ ...form, fees: v })}
+                  value={newRto.fees}
+                  onChangeText={(val) => setNewRto({ ...newRto, fees: val })}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>DUE DATE</Text>
+                <Text style={styles.label}>DUE DATE (YYYY-MM-DD)</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="YYYY-MM-DD"
-                  value={form.dueDate}
-                  onChangeText={v => setForm({ ...form, dueDate: v })}
+                  placeholder="e.g. 2026-06-30"
+                  placeholderTextColor={Colors.textLight}
+                  value={newRto.dueDate}
+                  onChangeText={(val) => setNewRto({ ...newRto, dueDate: val })}
                 />
               </View>
 
-              <Pressable style={styles.submitBtn} onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Add RTO Entry</Text>}
+              <View style={styles.field}>
+                <Text style={styles.label}>LINK TO LEAD (OPTIONAL ID)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Paste Lead UUID if any"
+                  placeholderTextColor={Colors.textLight}
+                  value={newRto.leadId}
+                  onChangeText={(val) => setNewRto({ ...newRto, leadId: val })}
+                />
+              </View>
+
+              <Pressable style={styles.submitBtn} onPress={handleAddRto} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>Create RTO Work</Text>
+                )}
               </Pressable>
             </ScrollView>
           </View>
         </View>
       </Modal>
-
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md, backgroundColor: '#FFFFFF' },
   menuBtn: { padding: Spacing.xs },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
-  count: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, paddingVertical: 2, borderRadius: BorderRadius.sm },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  countBadge: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.md, minWidth: 32, alignItems: 'center' },
+  countText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.primary },
   addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, padding: Spacing.lg },
+  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.lg, marginHorizontal: Spacing.md, marginBottom: Spacing.sm },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardName: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  cardMeta: { fontSize: FontSize.xs, color: Colors.textLight, marginTop: 2, textTransform: 'capitalize' },
+  cardName: { fontSize: FontSize.lg - 2, fontWeight: '800', color: Colors.text },
+  cardMeta: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
   badge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm },
   badgeText: { fontSize: FontSize.xs, fontWeight: '700', textTransform: 'capitalize' },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.md, alignItems: 'center' },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.md },
   amount: { fontSize: FontSize.lg, fontWeight: '900', color: Colors.text },
-  cardDate: { fontSize: FontSize.sm, color: Colors.textLight, fontWeight: '600' },
+  cardDate: { fontSize: FontSize.sm, color: Colors.textMuted },
   empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
-  emptyText: { fontSize: FontSize.md, color: Colors.textLight, fontWeight: '600' },
-  // Modal Styles
+  emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+
+  // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '80%', padding: Spacing.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
@@ -260,14 +274,8 @@ const styles = StyleSheet.create({
   closeBtn: { padding: Spacing.xs },
   modalBody: { flex: 1, marginTop: Spacing.lg },
   field: { marginBottom: Spacing.md },
-  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textLight, letterSpacing: 1, marginBottom: Spacing.xs },
-  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 48, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
-  typeSelector: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, padding: 4 },
-  typeOption: { flex: 1, height: 38, justifyContent: 'center', alignItems: 'center', borderRadius: BorderRadius.sm },
-  typeOptionActive: { backgroundColor: Colors.primaryLight },
-  typeOptionText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textLight, textTransform: 'capitalize' },
-  typeOptionTextActive: { color: Colors.primary, fontWeight: '800' },
-  submitBtn: { backgroundColor: Colors.primary, height: 48, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.md, marginBottom: Spacing.xl },
-  submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.md }
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
 });
-

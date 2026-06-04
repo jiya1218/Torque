@@ -15,7 +15,7 @@ export const useCacheStore = create<CacheState>((set, get) => ({
     try {
       await AsyncStorage.setItem('@app_cache', JSON.stringify(newCache));
     } catch (e) {
-      console.warn('[CacheStore] Write failed:', e);
+      console.warn('Cache write failed:', e);
     }
   },
   loadCache: async () => {
@@ -25,7 +25,7 @@ export const useCacheStore = create<CacheState>((set, get) => ({
         set({ cache: JSON.parse(val) });
       }
     } catch (e) {
-      console.warn('[CacheStore] Read failed:', e);
+      console.warn('Cache read failed:', e);
     }
   }
 }));

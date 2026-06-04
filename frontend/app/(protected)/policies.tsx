@@ -1,102 +1,103 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Modal, ScrollView, ActivityIndicator, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
-import Sidebar from '../../src/components/Sidebar';
 import { useCacheStore } from '../../src/store/cacheStore';
+import Sidebar from '../../src/components/Sidebar';
 
 export default function PoliciesScreen() {
   const router = useRouter();
-  const { cache, setCache } = useCacheStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [items, setItems] = useState<any[]>(cache['/policies'] || []);
-  const [total, setTotal] = useState(items.length);
+  const { cache, setCache, loadCache } = useCacheStore();
+
+  const [items, setItems] = useState<any[]>(cache['/policies']?.items || []);
+  const [total, setTotal] = useState(cache['/policies']?.items?.length || 0);
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filter, setFilter] = useState('all');
 
-  // Modal & Form State
-  const [modalOpen, setModalOpen] = useState(false);
-  const [loadingLeads, setLoadingLeads] = useState(false);
-  const [leads, setLeads] = useState<any[]>([]);
+  // Add Policy Modal states
+  const [addModalVisible, setAddModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const [form, setForm] = useState({
-    lead_id: '',
+  const [leads, setLeads] = useState<any[]>(cache['/leads']?.items || []);
+  
+  const [newPolicy, setNewPolicy] = useState({
     policy_number: '',
     provider: '',
-    type: 'Comprehensive',
+    type: '',
     premium_amount: '',
     status: 'Active',
     start_date: '',
-    end_date: ''
+    end_date: '',
+    lead_id: ''
   });
+
+  // Load cache on mount
+  useEffect(() => {
+    loadCache().then(() => {
+      const cachedPolicies = cache['/policies'];
+      if (cachedPolicies && cachedPolicies.items) {
+        setItems(cachedPolicies.items);
+        setTotal(cachedPolicies.items.length);
+      }
+      const cachedLeads = cache['/leads'];
+      if (cachedLeads && cachedLeads.items) {
+        setLeads(cachedLeads.items);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get<any[]>('/policies');
-      const arr = Array.isArray(data) ? data : (data as any).items || [];
-      setItems(arr);
-      setTotal(arr.length);
-      setCache('/policies', arr);
+      const statusParam = filter !== 'all' ? `?status=${filter}` : '';
+      const [pData, lData] = await Promise.all([
+        api.get<any[]>(`/policies${statusParam}`),
+        api.get<any>('/leads').catch(() => null)
+      ]);
+
+      const policiesArr = Array.isArray(pData) ? pData : [];
+      setItems(policiesArr);
+      setTotal(policiesArr.length);
+      setCache('/policies', { items: policiesArr });
+
+      if (lData) {
+        const leadsArr = Array.isArray(lData) ? lData : lData.items || [];
+        setLeads(leadsArr);
+        setCache('/leads', { items: leadsArr });
+      }
     } catch (e) {
-      console.error('[PoliciesScreen] Failed to load policies', e);
+      console.error('[PoliciesScreen] Failed to load policies data', e);
     }
-  }, [setCache]);
+  }, [filter, setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  
-  const onRefresh = async () => { 
-    setRefreshing(true); 
-    await load(); 
-    setRefreshing(false); 
-  };
+  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const fetchLeads = async () => {
-    setLoadingLeads(true);
-    try {
-      const res = await api.get<any>('/leads');
-      setLeads(res.leads || []);
-    } catch {
-      Alert.alert('Error', 'Failed to fetch leads for selection');
-    } finally {
-      setLoadingLeads(false);
-    }
-  };
-
-  const openAddModal = () => {
-    setForm({
-      lead_id: '',
-      policy_number: '',
-      provider: '',
-      type: 'Comprehensive',
-      premium_amount: '',
-      status: 'Active',
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    });
-    setModalOpen(true);
-    fetchLeads();
-  };
-
-  const handleCreate = async () => {
-    if (!form.lead_id || !form.policy_number || !form.provider || !form.premium_amount) {
-      Alert.alert('Error', 'Please fill in all required fields.');
+  const handleAddPolicy = async () => {
+    if (!newPolicy.policy_number.trim() || !newPolicy.provider.trim() || !newPolicy.type.trim() || !newPolicy.premium_amount || !newPolicy.start_date || !newPolicy.end_date) {
+      Alert.alert('Error', 'All fields marked with * are required.');
       return;
     }
-
     setSaving(true);
     try {
       await api.post('/policies', {
-        ...form,
-        premium_amount: parseFloat(form.premium_amount)
+        policy_number: newPolicy.policy_number.trim(),
+        provider: newPolicy.provider.trim(),
+        type: newPolicy.type.trim(),
+        premium_amount: parseFloat(newPolicy.premium_amount),
+        status: newPolicy.status,
+        start_date: new Date(newPolicy.start_date).toISOString(),
+        end_date: new Date(newPolicy.end_date).toISOString(),
+        lead_id: newPolicy.lead_id || null
       });
-      setModalOpen(false);
-      Alert.alert('Success', 'Policy created successfully!');
+      setAddModalVisible(false);
+      setNewPolicy({ policy_number: '', provider: '', type: '', premium_amount: '', status: 'Active', start_date: '', end_date: '', lead_id: '' });
+      Alert.alert('Success', 'Policy registered successfully!');
       load();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to create policy');
+      Alert.alert('Error', e.message || 'Failed to register policy');
     } finally {
       setSaving(false);
     }
@@ -104,7 +105,8 @@ export default function PoliciesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {/* Sidebar Component */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -112,14 +114,29 @@ export default function PoliciesScreen() {
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Policies</Text>
-        <Text style={styles.count}>{total}</Text>
+        <View style={styles.headerRight}>
+          <View style={styles.countBadge}><Text style={styles.countText}>{total}</Text></View>
+          <Pressable style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={22} color={Colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
+      {/* Filters */}
+      <View style={styles.filterRow}>
+        {['all', 'Active', 'Expired', 'Lapsed'].map(s => (
+          <Pressable key={s} style={[styles.chip, filter === s && styles.chipActive]} onPress={() => setFilter(s)}>
+            <Text style={[styles.chipText, filter === s && styles.chipTextActive]}>{s}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* List */}
       <FlatList 
         data={items} 
         keyExtractor={i => i.id} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
-        contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="shield-checkmark-outline" size={48} color={Colors.textLight} />
@@ -127,27 +144,24 @@ export default function PoliciesScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const sc = StatusColors[(item.status || 'Active').toLowerCase()] || StatusColors.active;
+          const sc = StatusColors[item.status] || StatusColors.active || StatusColors.pending;
           return (
             <View style={styles.card}>
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardName}>{item.lead?.clientName || 'Quoted Customer'}</Text>
-                  <Text style={styles.cardMeta}>{item.provider} · {item.type}</Text>
-                  <Text style={styles.cardNo}>No: {item.policyNumber}</Text>
+                  <Text style={styles.cardName}>{item.lead?.clientName || 'Direct Policy'}</Text>
+                  <Text style={styles.cardMeta}>{item.policyNumber} · {item.provider} · {item.type}</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: sc.bg }]}>
-                  <Text style={[styles.badgeText, { color: sc.text }]}>{item.status}</Text>
-                </View>
+                <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status}</Text></View>
               </View>
               <View style={styles.cardBottom}>
                 <View>
-                  <Text style={styles.lbl}>Premium</Text>
-                  <Text style={styles.val}>₹{Number(item.premiumAmount || 0).toLocaleString()}</Text>
+                  <Text style={styles.policyLabel}>Premium</Text>
+                  <Text style={styles.policyValue}>₹{Number(item.premiumAmount || 0).toLocaleString()}</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.lbl}>Expiry Date</Text>
-                  <Text style={styles.val}>{item.endDate ? new Date(item.endDate).toLocaleDateString() : 'N/A'}</Text>
+                <View>
+                  <Text style={styles.policyLabel}>End Date</Text>
+                  <Text style={styles.policyValue}>{new Date(item.endDate).toLocaleDateString()}</Text>
                 </View>
               </View>
             </View>
@@ -155,159 +169,154 @@ export default function PoliciesScreen() {
         }}
       />
 
-      {/* FAB */}
-      <Pressable style={styles.fab} onPress={openAddModal}>
-        <Ionicons name="add" size={28} color={Colors.white} />
-      </Pressable>
-
-      {/* Modal */}
-      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+      {/* ── Add Policy Modal ── */}
+      <Modal
+        visible={addModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Policy</Text>
-              <Pressable onPress={() => setModalOpen(false)} style={styles.closeBtn}>
+              <Pressable onPress={() => setAddModalVisible(false)} style={styles.closeBtn}>
                 <Ionicons name="close" size={24} color={Colors.text} />
               </Pressable>
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.field}>
-                <Text style={styles.label}>SELECT CLIENT / LEAD *</Text>
-                {loadingLeads ? (
-                  <ActivityIndicator color={Colors.primary} style={{ marginVertical: 10 }} />
-                ) : (
-                  <View style={styles.selectWrap}>
-                    {leads.map((l) => (
-                      <Pressable 
-                        key={l.id} 
-                        style={[styles.leadItem, form.lead_id === l.id && styles.leadItemActive]}
-                        onPress={() => setForm({ ...form, lead_id: l.id })}
-                      >
-                        <Text style={[styles.leadItemText, form.lead_id === l.id && styles.leadItemTextActive]}>
-                          {l.clientName} ({l.vehicleNo || 'No vehicle'})
-                        </Text>
-                      </Pressable>
-                    ))}
-                    {leads.length === 0 && <Text style={styles.emptyLeads}>No active leads available.</Text>}
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.field}>
                 <Text style={styles.label}>POLICY NUMBER *</Text>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="e.g. POL-987456" 
-                  value={form.policy_number}
-                  onChangeText={v => setForm({ ...form, policy_number: v })}
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. POL-98765432"
+                  placeholderTextColor={Colors.textLight}
+                  value={newPolicy.policy_number}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, policy_number: val })}
                 />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>PROVIDER *</Text>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="e.g. HDFC Ergo" 
-                  value={form.provider}
-                  onChangeText={v => setForm({ ...form, provider: v })}
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. HDFC Ergo, ICICI Lombard"
+                  placeholderTextColor={Colors.textLight}
+                  value={newPolicy.provider}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, provider: val })}
                 />
               </View>
 
-              <View style={styles.gridFields}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>TYPE</Text>
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="e.g. Comprehensive" 
-                    value={form.type}
-                    onChangeText={v => setForm({ ...form, type: v })}
-                  />
-                </View>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>PREMIUM (INR) *</Text>
-                  <TextInput 
-                    style={styles.input} 
-                    keyboardType="numeric"
-                    placeholder="₹ 0.00" 
-                    value={form.premium_amount}
-                    onChangeText={v => setForm({ ...form, premium_amount: v })}
-                  />
-                </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>TYPE *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Comprehensive, Third Party"
+                  placeholderTextColor={Colors.textLight}
+                  value={newPolicy.type}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, type: val })}
+                />
               </View>
 
-              <View style={styles.gridFields}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>START DATE</Text>
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="YYYY-MM-DD" 
-                    value={form.start_date}
-                    onChangeText={v => setForm({ ...form, start_date: v })}
-                  />
-                </View>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>END DATE</Text>
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="YYYY-MM-DD" 
-                    value={form.end_date}
-                    onChangeText={v => setForm({ ...form, end_date: v })}
-                  />
-                </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>PREMIUM AMOUNT *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="₹ 0.00"
+                  placeholderTextColor={Colors.textLight}
+                  keyboardType="numeric"
+                  value={newPolicy.premium_amount}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, premium_amount: val })}
+                />
               </View>
 
-              <Pressable style={styles.submitBtn} onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Add Policy</Text>}
+              <View style={styles.field}>
+                <Text style={styles.label}>START DATE * (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 2026-06-04"
+                  placeholderTextColor={Colors.textLight}
+                  value={newPolicy.start_date}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, start_date: val })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>END DATE * (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 2027-06-04"
+                  placeholderTextColor={Colors.textLight}
+                  value={newPolicy.end_date}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, end_date: val })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>LINK TO LEAD (OPTIONAL ID)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Paste Lead UUID if any"
+                  placeholderTextColor={Colors.textLight}
+                  value={newPolicy.lead_id}
+                  onChangeText={(val) => setNewPolicy({ ...newPolicy, lead_id: val })}
+                />
+                <Text style={styles.hint}>Available Leads: {leads.slice(0, 5).map(l => `${l.clientName} (${l.id.substring(0, 4)}...)`).join(', ')}</Text>
+              </View>
+
+              <Pressable style={styles.submitBtn} onPress={handleAddPolicy} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>Register Policy</Text>
+                )}
               </Pressable>
-              
-              <View style={{ height: 40 }} />
             </ScrollView>
           </View>
         </View>
       </Modal>
-
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: '#FFFFFF', gap: Spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md, backgroundColor: '#FFFFFF' },
   menuBtn: { padding: Spacing.xs },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
-  count: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, paddingVertical: 2, borderRadius: BorderRadius.sm },
-  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.lg, marginHorizontal: Spacing.md, marginTop: Spacing.sm },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  countBadge: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.md, minWidth: 32, alignItems: 'center' },
+  countText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.primary },
+  addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingVertical: Spacing.sm, backgroundColor: '#FFFFFF' },
+  chip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.border },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted },
+  chipTextActive: { color: Colors.white },
+  card: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.lg, marginHorizontal: Spacing.md, marginBottom: Spacing.sm },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardName: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  cardMeta: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  cardNo: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '700', marginTop: 2 },
+  cardName: { fontSize: FontSize.lg - 2, fontWeight: '800', color: Colors.text },
+  cardMeta: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
   badge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm },
-  badgeText: { fontSize: FontSize.xs, fontWeight: '700' },
+  badgeText: { fontSize: FontSize.xs, fontWeight: '700', textTransform: 'capitalize' },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border },
-  lbl: { fontSize: FontSize.xs, color: Colors.textMuted },
-  val: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text, marginTop: 2 },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
-  empty: { alignItems: 'center', paddingTop: 80, gap: Spacing.md },
+  policyLabel: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '500' },
+  policyValue: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text, marginTop: 2 },
+  empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
   emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
-  // Modal
+
+  // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '85%', padding: Spacing.lg },
+  modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '80%', padding: Spacing.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
   modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   closeBtn: { padding: Spacing.xs },
   modalBody: { flex: 1, marginTop: Spacing.lg },
   field: { marginBottom: Spacing.md },
-  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textLight, letterSpacing: 1, marginBottom: Spacing.xs },
-  selectWrap: { borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, backgroundColor: '#FFFFFF', maxHeight: 150, padding: 4 },
-  leadItem: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.sm, marginBottom: 2 },
-  leadItemActive: { backgroundColor: Colors.primaryLight },
-  leadItemText: { fontSize: FontSize.sm, color: Colors.text },
-  leadItemTextActive: { color: Colors.primary, fontWeight: '700' },
-  emptyLeads: { padding: Spacing.md, fontStyle: 'italic', color: Colors.textMuted },
-  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 48, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
-  gridFields: { flexDirection: 'row', gap: Spacing.md },
-  submitBtn: { backgroundColor: Colors.primary, height: 50, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.md },
-  submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.md }
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  hint: { fontSize: 10, color: Colors.textLight, marginTop: 4 },
+  submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
 });

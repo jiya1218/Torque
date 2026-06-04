@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
 import AppFooter from '../../src/components/AppFooter';
@@ -6,12 +6,10 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
-import Sidebar from '../../src/components/Sidebar';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const sections = [
     { title: 'Account', items: [
@@ -44,13 +42,13 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
-        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
-          <Ionicons name="menu-outline" size={26} color={Colors.text} />
+        <Pressable testID="back-btn" onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Settings</Text>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll}>
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
@@ -131,7 +129,6 @@ export default function SettingsScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
       <AppFooter active="settings" />
-      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -143,7 +140,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl, paddingVertical: Spacing.lg,
     backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: Colors.border
   },
-  menuBtn: { padding: Spacing.xs },
   title: { fontSize: FontSize.xl, fontWeight: '900', color: Colors.text },
   scroll: { flex: 1 },
 
@@ -207,4 +203,3 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: FontSize.md, fontWeight: '800', color: Colors.error }
 });
-
