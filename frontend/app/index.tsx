@@ -4,9 +4,11 @@ import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Pla
 import { useAuth } from '../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
   const { user, isLoading, login } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -93,13 +95,21 @@ export default function LoginScreen() {
               <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />
             </Pressable>
           </View>
-
           <Pressable style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
             {loading ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.loginBtnText}>Sign In</Text>
             )}
+          </Pressable>
+
+          <Pressable 
+            style={styles.signupBtn} 
+            onPress={() => router.push('/onboarding')}
+          >
+            <Text style={styles.signupBtnText}>
+              Don&apos;t have an account? <Text style={styles.signupLinkText}>Sign Up</Text>
+            </Text>
           </Pressable>
         </View>
 
@@ -127,6 +137,9 @@ const styles = StyleSheet.create({
   eyeBtn: { padding: Spacing.lg },
   loginBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   loginBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+  signupBtn: { marginTop: Spacing.md, alignItems: 'center', paddingVertical: Spacing.sm },
+  signupBtnText: { color: Colors.textMuted, fontSize: FontSize.sm, fontWeight: '600' },
+  signupLinkText: { color: Colors.primary, fontWeight: '800' },
   errorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.errorBg, padding: Spacing.md, borderRadius: BorderRadius.sm, gap: Spacing.sm },
   errorText: { color: Colors.error, fontSize: FontSize.sm, flex: 1 },
   footer: { alignItems: 'center', marginTop: 30 },

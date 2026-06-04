@@ -33,7 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
 });
 
-const LIVE_API_BASE = 'https://toruqfinal-admin-panel.vercel.app';
+const LIVE_API_BASE = 'https://torque-alpha.vercel.app';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

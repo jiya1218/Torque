@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/utils/theme';
 
-const LIVE_BASE_URL = 'https://toruqfinal-admin-panel.vercel.app';
+const LIVE_BASE_URL = 'https://torque-alpha.vercel.app';
 
 const getBaseUrl = () => {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {

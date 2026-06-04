@@ -132,7 +132,7 @@ export default function FollowUpsScreen() {
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={52} color={Colors.textLight} />
             <Text style={styles.emptyTitle}>No scheduled follow-ups</Text>
-            <Text style={styles.emptyText}>Tasks matching "{filter}" will appear here</Text>
+            <Text style={styles.emptyText}>Tasks matching &quot;{filter}&quot; will appear here</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -170,7 +170,7 @@ export default function FollowUpsScreen() {
               {item.notes ? (
                 <View style={styles.notesContainer}>
                   <Text style={styles.notesText} numberOfLines={3}>
-                    "{item.notes}"
+                    &quot;{item.notes}&quot;
                   </Text>
                 </View>
               ) : null}

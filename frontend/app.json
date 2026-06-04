@@ -47,11 +47,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "727086dc-4268-41cc-bb06-15c69663e95a"
-      },
-      "router": {}
+        "projectId": "17866496-57c8-48dc-ab57-919defbe8604"
+      }
     },
-    "owner": "utkarshmakwana"
+    "owner": "testdemos"
   }
 }
