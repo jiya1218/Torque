@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../src/lib/supabase';
 import Sidebar from '../../src/components/Sidebar';
 import { useCacheStore } from '../../src/store/cacheStore';
-import * as FileSystem from 'expo-file-system/build/legacy';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 export default function QuotationsScreen() {
