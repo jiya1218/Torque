@@ -226,9 +226,22 @@ export default function SignupScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <Pressable onPress={() => router.replace('/')} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.md }}>
+            <Pressable 
+              onPress={() => router.replace('/')} 
+              style={styles.backBtn}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Ionicons name="arrow-back" size={24} color={Colors.text} />
+            </Pressable>
+            <Pressable 
+              onPress={() => router.replace('/')}
+              style={styles.exitTextBtn}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Text style={styles.exitText}>Exit</Text>
+            </Pressable>
+          </View>
 
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
@@ -506,5 +519,18 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
     paddingVertical: Spacing.xl,
     fontSize: FontSize.sm,
+  },
+  exitTextBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  exitText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    fontWeight: '700',
   },
 });
