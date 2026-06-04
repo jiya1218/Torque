@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Linking, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { quotationsService, Quotation } from '../../src/services/quotations';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../src/lib/supabase';
 
 export default function QuotationsScreen() {
   const router = useRouter();
@@ -56,6 +57,28 @@ export default function QuotationsScreen() {
                 <View><Text style={styles.lbl}>Amount</Text><Text style={styles.val}>₹{Number(item.amount || 0).toLocaleString()}</Text></View>
                 <View><Text style={styles.lbl}>Status</Text><Text style={styles.val}>{item.status}</Text></View>
                 <View><Text style={styles.lbl}>Lead ID</Text><Text style={styles.val}>{item.lead_id ? item.lead_id.substring(0, 8) + '…' : '—'}</Text></View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={styles.lbl}>Download</Text>
+                  <Pressable 
+                    style={styles.pdfBtn}
+                    onPress={async () => {
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const token = session?.access_token;
+                        if (!token) {
+                          Alert.alert('Error', 'Session expired. Please log in again.');
+                          return;
+                        }
+                        const url = `https://torque-alpha.vercel.app/api/v1/quotations/${item.id}/pdf?token=${token}`;
+                        Linking.openURL(url);
+                      } catch (err) {
+                        Alert.alert('Error', 'Failed to open PDF link');
+                      }
+                    }}
+                  >
+                    <Ionicons name="download-outline" size={16} color={Colors.primary} />
+                  </Pressable>
+                </View>
               </View>
             </View>
           );
@@ -82,6 +105,7 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border },
   lbl: { fontSize: FontSize.xs, color: Colors.textMuted },
   val: { fontSize: FontSize.md, fontWeight: '900', color: Colors.text, marginTop: 2 },
+  pdfBtn: { marginTop: 2, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm, backgroundColor: Colors.primaryLight },
   fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
   emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
