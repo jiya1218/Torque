@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -6,21 +6,35 @@ import { api } from '../../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import AppFooter from '../../../src/components/AppFooter';
+import Sidebar from '../../../src/components/Sidebar';
+import { useCacheStore } from '../../../src/store/cacheStore';
 
 export default function LeadsScreen() {
   const router = useRouter();
-  const [items, setItems] = useState<any[]>([]);
+  const { cache, setCache, loadCache } = useCacheStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [items, setItems] = useState<any[]>(cache['/leads']?.leads || []);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadCache().then(() => {
+      if (cache['/leads']?.leads) {
+        setItems(cache['/leads'].leads);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const res = await api.get<any>('/leads');
-      setItems(res.leads || []);
+      const leadsList = res.leads || [];
+      setItems(leadsList);
+      setCache('/leads', res);
     } catch (e) {
       console.error('[LeadsScreen] Failed to load leads', e);
     }
-  }, []);
+  }, [setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
@@ -34,8 +48,17 @@ export default function LeadsScreen() {
       try {
         await api.post(`/leads/${leadId}/whatsapp`, {});
         const msg = `Hello ${name || 'Customer'},\nYour vehicle ${vehicle || ''} insurance expires on ${expiry || 'soon'}.\nRenew today with Torque Auto Advisor.`;
-        Linking.openURL(`https://wa.me/91${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`);
-      } catch (err) {}
+        let cleanPhone = phone.replace(/\D/g, '');
+        if (cleanPhone.length === 10) {
+          cleanPhone = '91' + cleanPhone;
+        }
+        const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+        await Linking.openURL(whatsappUrl).catch(() => {
+          return Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`);
+        });
+      } catch (err) {
+        console.error('Failed to send WhatsApp', err);
+      }
     }
   };
 
@@ -51,8 +74,8 @@ export default function LeadsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
+          <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>My Leads</Text>
         <Pressable style={styles.addBtn} onPress={() => router.push('/lead/new')}>
@@ -162,6 +185,9 @@ export default function LeadsScreen() {
 
       {/* Sticky Footer */}
       <AppFooter active="leads" />
+
+      {/* Sliding Sidebar */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }

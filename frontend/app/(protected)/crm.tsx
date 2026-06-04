@@ -1,17 +1,41 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Modal, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
+import Sidebar from '../../src/components/Sidebar';
+import { useCacheStore } from '../../src/store/cacheStore';
 
 export default function CRMScreen() {
   const router = useRouter();
-  const [items, setItems] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
+  const { cache, setCache, loadCache } = useCacheStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [items, setItems] = useState<any[]>(cache['/crm'] || []);
+  const [total, setTotal] = useState(items.length);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add Client Modal State
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    kyc_status: 'pending'
+  });
+
+  useEffect(() => {
+    loadCache().then(() => {
+      if (cache['/crm']) {
+        setItems(cache['/crm']);
+        setTotal(cache['/crm'].length);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -19,18 +43,62 @@ export default function CRMScreen() {
       const arr = Array.isArray(data) ? data : (data as any).items || [];
       setItems(arr);
       setTotal(arr.length);
+      setCache('/crm', arr);
     } catch {}
-  }, []);
+  }, [setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
+  const handleWhatsApp = async (name: string, phone: string) => {
+    if (phone) {
+      const msg = `Hi ${name || 'Customer'}`;
+      let cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length === 10) {
+        cleanPhone = '91' + cleanPhone;
+      }
+      const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+      await Linking.openURL(whatsappUrl).catch(() => {
+        return Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`);
+      });
+    }
+  };
+
+  const openAddModal = () => {
+    setForm({ name: '', phone: '', email: '', address: '', kyc_status: 'pending' });
+    setModalOpen(true);
+  };
+
+  const handleCreate = async () => {
+    if (!form.name || !form.phone) {
+      Alert.alert('Error', 'Name and Phone are required.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/crm', form);
+      setModalOpen(false);
+      Alert.alert('Success', 'Client added successfully!');
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to add client');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Pressable testID="back-btn" onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={Colors.text} /></Pressable>
-        <Text style={styles.title}>CRM / Customers</Text>
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.backBtn}>
+          <Ionicons name="menu-outline" size={26} color={Colors.text} />
+        </Pressable>
+        <Text style={styles.title}>CRM / Clients</Text>
         <Text style={styles.count}>{total}</Text>
+        <Pressable style={styles.addBtn} onPress={openAddModal}>
+          <Ionicons name="add" size={22} color={Colors.primary} />
+        </Pressable>
       </View>
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
@@ -38,7 +106,7 @@ export default function CRMScreen() {
           <TextInput testID="crm-search" style={styles.searchInput} placeholder="Search customers..." placeholderTextColor={Colors.textLight} value={search} onChangeText={setSearch} onSubmitEditing={load} returnKeyType="search" />
         </View>
       </View>
-      <FlatList data={items} keyExtractor={i => i.id} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      <FlatList data={items.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search))} keyExtractor={i => i.id} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
         ListEmptyComponent={<View style={styles.empty}><Ionicons name="people-circle-outline" size={48} color={Colors.textLight} /><Text style={styles.emptyText}>No customers</Text></View>}
         renderItem={({ item }) => (
@@ -47,8 +115,8 @@ export default function CRMScreen() {
               <View style={styles.avatar}><Text style={styles.avatarText}>{item.name?.charAt(0)}</Text></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardName}>{item.name}</Text>
-                <Text style={styles.cardMeta}>{item.phone} · {item.email}</Text>
-                <Text style={styles.cardMeta}>{item.address}</Text>
+                <Text style={styles.cardMeta}>{item.phone} · {item.email || 'No email'}</Text>
+                <Text style={styles.cardMeta}>{item.address || 'No address'}</Text>
                 
                 {/* Revenue & Activity Tracking */}
                 <View style={styles.revenueRow}>
@@ -66,7 +134,7 @@ export default function CRMScreen() {
                 <Pressable testID={`call-${item.id}`} style={styles.actionBtn} onPress={() => Linking.openURL(`tel:${item.phone}`)}>
                   <Ionicons name="call" size={18} color={Colors.success} />
                 </Pressable>
-                <Pressable testID={`whatsapp-${item.id}`} style={styles.actionBtn} onPress={() => Linking.openURL(`https://wa.me/91${item.phone?.replace(/\D/g, '')}?text=Hi ${item.name}`)}>
+                <Pressable testID={`whatsapp-${item.id}`} style={styles.actionBtn} onPress={() => handleWhatsApp(item.name, item.phone)}>
                   <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
                 </Pressable>
               </View>
@@ -74,6 +142,43 @@ export default function CRMScreen() {
           </View>
         )}
       />
+
+      {/* Add Client Modal */}
+      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Client</Text>
+              <Pressable onPress={() => setModalOpen(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.field}>
+                <Text style={styles.label}>CLIENT NAME *</Text>
+                <TextInput style={styles.input} placeholder="e.g. Rahul Sharma" value={form.name} onChangeText={v => setForm({ ...form, name: v })} />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>PHONE NUMBER *</Text>
+                <TextInput style={styles.input} keyboardType="phone-pad" placeholder="e.g. 9876543210" value={form.phone} onChangeText={v => setForm({ ...form, phone: v })} />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>EMAIL ADDRESS</Text>
+                <TextInput style={styles.input} keyboardType="email-address" placeholder="e.g. rahul@example.com" value={form.email} onChangeText={v => setForm({ ...form, email: v })} />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>ADDRESS</Text>
+                <TextInput style={styles.input} placeholder="e.g. Sector 12, Gandhinagar" value={form.address} onChangeText={v => setForm({ ...form, address: v })} />
+              </View>
+              <Pressable style={styles.submitBtn} onPress={handleCreate} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Add Client</Text>}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -102,4 +207,18 @@ const styles = StyleSheet.create({
   actionBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
   empty: { alignItems: 'center', paddingTop: 60, gap: Spacing.md },
   emptyText: { fontSize: FontSize.md, color: Colors.textMuted },
+  addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { padding: Spacing.xs },
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '70%', padding: Spacing.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  closeBtn: { padding: Spacing.xs },
+  modalBody: { flex: 1, marginTop: Spacing.lg },
+  field: { marginBottom: Spacing.md },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textLight, letterSpacing: 1, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 48, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  submitBtn: { backgroundColor: Colors.primary, height: 48, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.md },
+  submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.md }
 });

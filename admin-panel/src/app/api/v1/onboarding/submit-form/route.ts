@@ -46,6 +46,23 @@ export async function POST(req: NextRequest) {
       }
     })
 
+    // Forward response to Google Drive Apps Script Webhook (asynchronously)
+    const driveWebhook = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
+    if (driveWebhook) {
+      fetch(driveWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalMobile,
+          dateOfBirth,
+          highestQualification,
+          joiningDate,
+          homeMobile,
+          documents
+        })
+      }).catch((e) => console.warn('[submit-form] Google Drive webhook failed:', e));
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Onboarding form submitted successfully. Profile unlocked!',

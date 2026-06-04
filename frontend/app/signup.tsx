@@ -23,11 +23,6 @@ const BASE_URL = getBaseUrl();
 export default function SignupScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [metadataLoading, setMetadataLoading] = useState(true);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [managers, setManagers] = useState<any[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState('');
-  const [selectedManagerId, setSelectedManagerId] = useState('');
 
   const [form, setForm] = useState({
     fullName: '',
@@ -35,39 +30,9 @@ export default function SignupScreen() {
     password: ''
   });
 
-  useEffect(() => {
-    async function loadMetadata() {
-      try {
-        const METADATA_API = `${BASE_URL}/api/v1/auth/signup-metadata`;
-        const res = await fetch(METADATA_API);
-        if (res.ok) {
-          const data = await res.json();
-          setRoles(data.roles || []);
-          setManagers(data.managers || []);
-          if (data.roles && data.roles.length > 0) {
-            setSelectedRoleId(data.roles[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading signup metadata:', err);
-      } finally {
-        setMetadataLoading(false);
-      }
-    }
-    loadMetadata();
-  }, []);
-
-  const selectedRole = roles.find(r => r.id === selectedRoleId);
-  const isSalesExecutive = selectedRole?.name?.toLowerCase().includes('sales executive') || selectedRole?.name?.toLowerCase().includes('executive');
-
   const handleSignup = async () => {
-    if (!form.fullName || !form.email || !form.password || !selectedRoleId) {
+    if (!form.fullName || !form.email || !form.password) {
       Alert.alert('Error', 'Please fill in all required fields.');
-      return;
-    }
-
-    if (isSalesExecutive && !selectedManagerId) {
-      Alert.alert('Error', 'Reporting Manager is required for sales roles.');
       return;
     }
 
@@ -80,9 +45,7 @@ export default function SignupScreen() {
         body: JSON.stringify({
           fullName: form.fullName,
           email: form.email,
-          password: form.password,
-          roleId: selectedRoleId,
-          managerId: isSalesExecutive ? selectedManagerId : undefined
+          password: form.password
         })
       });
 
@@ -121,122 +84,56 @@ export default function SignupScreen() {
             <Text style={styles.subtitle}>Join Torque Auto Advisor management platform</Text>
           </View>
 
-          {metadataLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={styles.loadingText}>Loading metadata...</Text>
+          <View style={styles.formContainer}>
+            <View style={styles.field}>
+              <Text style={styles.label}>FULL NAME *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. MEHRA KARAN"
+                value={form.fullName}
+                onChangeText={(val) => setForm(prev => ({ ...prev, fullName: val }))}
+              />
             </View>
-          ) : (
-            <View style={styles.formContainer}>
-              <View style={styles.field}>
-                <Text style={styles.label}>FULL NAME *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. MEHRA KARAN"
-                  value={form.fullName}
-                  onChangeText={(val) => setForm(prev => ({ ...prev, fullName: val }))}
-                />
-              </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>EMAIL ADDRESS *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="karan@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={form.email}
-                  onChangeText={(val) => setForm(prev => ({ ...prev, email: val }))}
-                />
-              </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>EMAIL ADDRESS *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="karan@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={form.email}
+                onChangeText={(val) => setForm(prev => ({ ...prev, email: val }))}
+              />
+            </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>PASSWORD *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  secureTextEntry
-                  value={form.password}
-                  onChangeText={(val) => setForm(prev => ({ ...prev, password: val }))}
-                />
-              </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>PASSWORD *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                secureTextEntry
+                value={form.password}
+                onChangeText={(val) => setForm(prev => ({ ...prev, password: val }))}
+              />
+            </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>ROLE *</Text>
-                <View style={styles.pickerContainer}>
-                  {roles.map((r) => {
-                    const isSelected = r.id === selectedRoleId;
-                    return (
-                      <Pressable
-                        key={r.id}
-                        onPress={() => {
-                          setSelectedRoleId(r.id);
-                          if (!r.name?.toLowerCase().includes('executive')) {
-                            setSelectedManagerId('');
-                          }
-                        }}
-                        style={[
-                          styles.roleCard,
-                          isSelected && styles.roleCardActive
-                        ]}
-                      >
-                        <Text style={[styles.roleCardText, isSelected && styles.roleCardTextActive]}>
-                          {r.name?.replace(/_/g, ' ')}
-                        </Text>
-                        {isSelected && <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {isSalesExecutive && (
-                <View style={styles.field}>
-                  <Text style={styles.label}>REPORTING MANAGER *</Text>
-                  <View style={styles.pickerContainer}>
-                    {managers.length === 0 ? (
-                      <Text style={styles.noManagersText}>No reporting managers available</Text>
-                    ) : (
-                      managers.map((m) => {
-                        const isSelected = m.id === selectedManagerId;
-                        return (
-                          <Pressable
-                            key={m.id}
-                            onPress={() => setSelectedManagerId(m.id)}
-                            style={[
-                              styles.roleCard,
-                              isSelected && styles.roleCardActive
-                            ]}
-                          >
-                            <Text style={[styles.roleCardText, isSelected && styles.roleCardTextActive]}>
-                              {m.fullName} {m.role?.name ? `(${m.role.name})` : ''}
-                            </Text>
-                            {isSelected && <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />}
-                          </Pressable>
-                        );
-                      })
-                    )}
-                  </View>
-                </View>
+            <Pressable 
+              style={[styles.submitBtn, loading && styles.submitBtnDisabled]} 
+              onPress={handleSignup}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <>
+                  <Text style={styles.submitBtnText}>Create Account</Text>
+                  <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+                </>
               )}
-
-              <Pressable 
-                style={[styles.submitBtn, loading && styles.submitBtnDisabled]} 
-                onPress={handleSignup}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color={Colors.white} />
-                ) : (
-                  <>
-                    <Text style={styles.submitBtnText}>Create Account</Text>
-                    <Ionicons name="arrow-forward" size={18} color={Colors.white} />
-                  </>
-                )}
-              </Pressable>
-            </View>
-          )}
+            </Pressable>
+          </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account?</Text>

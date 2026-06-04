@@ -1,26 +1,49 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Alert, StatusBar, Modal, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import AppFooter from '../../src/components/AppFooter';
+import Sidebar from '../../src/components/Sidebar';
+import { useCacheStore } from '../../src/store/cacheStore';
 
 export default function VisitsScreen() {
   const router = useRouter();
-  const [items, setItems] = useState<any[]>([]);
+  const { cache, setCache, loadCache } = useCacheStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [items, setItems] = useState<any[]>(cache['/visits'] || []);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add/Schedule Visit Modal State
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    purpose: '',
+    location: '',
+    scheduledAt: new Date(Date.now() + 86400000).toISOString().slice(0, 16).replace('T', ' ') // Tomorrow default
+  });
+
+  useEffect(() => {
+    loadCache().then(() => {
+      if (cache['/visits']) {
+        setItems(cache['/visits']);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const data = await api.get<any[]>('/visits');
-      setItems(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      setItems(arr);
+      setCache('/visits', arr);
     } catch {
       console.error('[VisitsScreen] Failed to load visits');
     }
-  }, []);
+  }, [setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
@@ -42,6 +65,34 @@ export default function VisitsScreen() {
     }
   };
 
+  const handleCreate = async () => {
+    if (!form.purpose || !form.location || !form.scheduledAt) {
+      Alert.alert('Error', 'Purpose, Location, and Scheduled Date/Time are required.');
+      return;
+    }
+    const schedDate = new Date(form.scheduledAt);
+    if (isNaN(schedDate.getTime())) {
+      Alert.alert('Error', 'Please enter a valid date format YYYY-MM-DD HH:MM');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/visits', {
+        purpose: form.purpose,
+        location: form.location,
+        scheduledAt: schedDate.toISOString()
+      });
+      setModalOpen(false);
+      Alert.alert('Success', 'Field visit scheduled successfully!');
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to schedule field visit');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'completed':   return { bg: '#ECFDF5', text: '#047857', border: '#10B98130' };
@@ -55,18 +106,28 @@ export default function VisitsScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+          <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Field Visits</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{items.length}</Text>
         </View>
+        <Pressable style={styles.addBtn} onPress={() => {
+          setForm({
+            purpose: '',
+            location: '',
+            scheduledAt: new Date(Date.now() + 86400000).toISOString().slice(0, 16).replace('T', ' ')
+          });
+          setModalOpen(true);
+        }}>
+          <Ionicons name="add" size={22} color={Colors.primary} />
+        </Pressable>
       </View>
 
       <FlatList
         data={items}
-        keyExtractor={i => i.id}
+        keyExtractor={i => i.id || Math.random().toString()}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
         contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.lg }}
         ListEmptyComponent={
@@ -129,7 +190,57 @@ export default function VisitsScreen() {
         }}
       />
 
+      {/* Schedule Visit Modal */}
+      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Schedule Field Visit</Text>
+              <Pressable onPress={() => setModalOpen(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.field}>
+                <Text style={styles.label}>PURPOSE OF VISIT *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Policy Renewal Discussion"
+                  value={form.purpose}
+                  onChangeText={v => setForm({ ...form, purpose: v })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>LOCATION / ADDRESS *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Office Suite 4B, CG Road, Ahmedabad"
+                  value={form.location}
+                  onChangeText={v => setForm({ ...form, location: v })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>SCHEDULE DATE & TIME *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="YYYY-MM-DD HH:MM (e.g. 2026-06-05 14:30)"
+                  value={form.scheduledAt}
+                  onChangeText={v => setForm({ ...form, scheduledAt: v })}
+                />
+              </View>
+
+              <Pressable style={styles.submitBtn} onPress={handleCreate} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Schedule Visit</Text>}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <AppFooter />
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -142,10 +253,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     backgroundColor: '#FFFFFF', gap: Spacing.md,
   },
-  backBtn:    { padding: Spacing.xs },
+  menuBtn:    { padding: Spacing.xs },
   title:      { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
   countBadge: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.md, minWidth: 32, alignItems: 'center' },
   countText:  { fontSize: FontSize.xs, fontWeight: '800', color: Colors.primary },
+  addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
   card: {
     backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: Colors.border,
     borderRadius: BorderRadius.lg, padding: Spacing.lg,
@@ -165,4 +277,17 @@ const styles = StyleSheet.create({
   empty:        { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
   emptyTitle:   { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
   emptyText:    { fontSize: FontSize.sm, color: Colors.textMuted },
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '65%', padding: Spacing.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  closeBtn: { padding: Spacing.xs },
+  modalBody: { flex: 1, marginTop: Spacing.lg },
+  field: { marginBottom: Spacing.md },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textLight, letterSpacing: 1, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 48, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  submitBtn: { backgroundColor: Colors.primary, height: 48, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.md, marginBottom: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.md }
 });
+

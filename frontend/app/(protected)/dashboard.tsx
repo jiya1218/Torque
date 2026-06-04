@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl, Dimensions, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -7,6 +7,8 @@ import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/utils/api';
 import AppFooter from '../../src/components/AppFooter';
+import Sidebar from '../../src/components/Sidebar';
+import { useCacheStore } from '../../src/store/cacheStore';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - (Spacing.lg * 2) - Spacing.md) / 2;
@@ -14,9 +16,18 @@ const CARD_WIDTH = (width - (Spacing.lg * 2) - Spacing.md) / 2;
 export default function DashboardScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [stats, setStats] = useState<any>({ leads: 0, revenue: 0, pending: 0, claims: 0 });
-  const [items, setItems] = useState<any[]>([]);
+  const { cache, setCache, loadCache } = useCacheStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [stats, setStats] = useState<any>(cache['/dashboard/stats'] || { leads: 0, revenue: 0, pending: 0, claims: 0 });
+  const [items, setItems] = useState<any[]>(cache['/notifications'] || []);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadCache().then(() => {
+      if (cache['/dashboard/stats']) setStats(cache['/dashboard/stats']);
+      if (cache['/notifications']) setItems(cache['/notifications']);
+    });
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -51,12 +62,17 @@ export default function DashboardScreen() {
         }
       }
 
-      setStats({ leads, revenue, pending, claims });
-      setItems(nData.notifications || []);
+      const freshStats = { leads, revenue, pending, claims };
+      const freshItems = nData.notifications || [];
+      
+      setStats(freshStats);
+      setItems(freshItems);
+      setCache('/dashboard/stats', freshStats);
+      setCache('/notifications', freshItems);
     } catch {
-      setStats({ leads: 0, revenue: 0, pending: 0, claims: 0 });
+      // Keep cached data on failure
     }
-  }, []);
+  }, [setCache]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
@@ -101,7 +117,10 @@ export default function DashboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <Pressable onPress={() => setSidebarOpen(true)} style={{ paddingRight: Spacing.md, justifyContent: 'center' }}>
+            <Ionicons name="menu-outline" size={28} color={Colors.text} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Welcome back,</Text>
             <Text style={styles.userName}>{user?.full_name || user?.name || 'Admin'}</Text>
           </View>
@@ -176,6 +195,9 @@ export default function DashboardScreen() {
 
       {/* Sticky Footer */}
       <AppFooter active="home" />
+
+      {/* Sliding Sidebar */}
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }

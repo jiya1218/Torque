@@ -1,26 +1,53 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Alert, StatusBar, Modal, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import AppFooter from '../../src/components/AppFooter';
+import Sidebar from '../../src/components/Sidebar';
+import { useCacheStore } from '../../src/store/cacheStore';
 
 export default function FollowUpsScreen() {
   const router = useRouter();
-  const [items, setItems] = useState<any[]>([]);
+  const { cache, setCache, loadCache } = useCacheStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [items, setItems] = useState<any[]>(cache[`/follow-ups?status=${cache.lastFollowupFilter || 'pending'}`] || []);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+
+  // Add Follow-up Modal State
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    lead_name: '',
+    type: 'call',
+    scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16).replace('T', ' '), // Tomorrow default
+    notes: ''
+  });
+
+  useEffect(() => {
+    loadCache().then(() => {
+      const storedFilter = cache.lastFollowupFilter || 'pending';
+      setFilter(storedFilter);
+      if (cache[`/follow-ups?status=${storedFilter}`]) {
+        setItems(cache[`/follow-ups?status=${storedFilter}`]);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     try {
       const data = await api.get<any[]>(`/follow-ups?status=${filter}`);
-      setItems(Array.isArray(data) ? data : []);
+      const arr = Array.isArray(data) ? data : [];
+      setItems(arr);
+      setCache(`/follow-ups?status=${filter}`, arr);
+      setCache('lastFollowupFilter', filter);
     } catch {
       console.error('[FollowUpsScreen] Failed to load follow-ups');
     }
-  }, [filter]);
+  }, [filter, setCache]);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,6 +84,35 @@ export default function FollowUpsScreen() {
     );
   };
 
+  const handleCreate = async () => {
+    if (!form.lead_name) {
+      Alert.alert('Error', 'Lead name is required.');
+      return;
+    }
+    const scheduledDate = new Date(form.scheduled_at);
+    if (isNaN(scheduledDate.getTime())) {
+      Alert.alert('Error', 'Please enter a valid date format YYYY-MM-DD HH:MM');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post('/follow-ups', {
+        lead_name: form.lead_name,
+        type: form.type,
+        scheduled_at: scheduledDate.toISOString(),
+        notes: form.notes
+      });
+      setModalOpen(false);
+      Alert.alert('Success', 'Follow-up scheduled successfully!');
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to schedule follow-up');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type?.toLowerCase()) {
       case 'call':
@@ -81,13 +137,24 @@ export default function FollowUpsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+          <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Follow-ups</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{items.length}</Text>
         </View>
+        <Pressable style={styles.addBtn} onPress={() => {
+          setForm({
+            lead_name: '',
+            type: 'call',
+            scheduled_at: new Date(Date.now() + 86400000).toISOString().slice(0, 16).replace('T', ' '),
+            notes: ''
+          });
+          setModalOpen(true);
+        }}>
+          <Ionicons name="add" size={22} color={Colors.primary} />
+        </Pressable>
       </View>
 
       {/* Filter Tabs */}
@@ -119,7 +186,7 @@ export default function FollowUpsScreen() {
       {/* List */}
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id || Math.random().toString()}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -220,7 +287,75 @@ export default function FollowUpsScreen() {
         }}
       />
 
+      {/* Add Follow-up Modal */}
+      <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Schedule Follow-up</Text>
+              <Pressable onPress={() => setModalOpen(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.field}>
+                <Text style={styles.label}>LEAD / CLIENT NAME *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Ramesh Patel"
+                  value={form.lead_name}
+                  onChangeText={v => setForm({ ...form, lead_name: v })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>FOLLOW-UP TYPE</Text>
+                <View style={styles.typeSelector}>
+                  {['call', 'whatsapp', 'visit'].map(t => (
+                    <Pressable
+                      key={t}
+                      style={[styles.typeOption, form.type === t && styles.typeOptionActive]}
+                      onPress={() => setForm({ ...form, type: t })}
+                    >
+                      <Text style={[styles.typeOptionText, form.type === t && styles.typeOptionTextActive]}>
+                        {t}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>SCHEDULE DATE & TIME *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="YYYY-MM-DD HH:MM (e.g. 2026-06-05 14:30)"
+                  value={form.scheduled_at}
+                  onChangeText={v => setForm({ ...form, scheduled_at: v })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>NOTES / DETAILS</Text>
+                <TextInput
+                  style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: Spacing.sm }]}
+                  multiline
+                  placeholder="Details of what to discuss..."
+                  value={form.notes}
+                  onChangeText={v => setForm({ ...form, notes: v })}
+                />
+              </View>
+
+              <Pressable style={styles.submitBtn} onPress={handleCreate} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Schedule</Text>}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <AppFooter active="follow-ups" />
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -237,7 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     gap: Spacing.md,
   },
-  backBtn: { padding: Spacing.xs },
+  menuBtn: { padding: Spacing.xs },
   title: {
     flex: 1,
     fontSize: FontSize.xxl,
@@ -253,6 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countText: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.primary },
+  addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
   filterContainer: {
     flexDirection: 'row',
     backgroundColor: '#F8FAFC',
@@ -415,4 +551,22 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, height: '80%', padding: Spacing.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  closeBtn: { padding: Spacing.xs },
+  modalBody: { flex: 1, marginTop: Spacing.lg },
+  field: { marginBottom: Spacing.md },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textLight, letterSpacing: 1, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 48, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  typeSelector: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, padding: 4 },
+  typeOption: { flex: 1, height: 38, justifyContent: 'center', alignItems: 'center', borderRadius: BorderRadius.sm },
+  typeOptionActive: { backgroundColor: Colors.primaryLight },
+  typeOptionText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textLight, textTransform: 'capitalize' },
+  typeOptionTextActive: { color: Colors.primary, fontWeight: '800' },
+  submitBtn: { backgroundColor: Colors.primary, height: 48, borderRadius: BorderRadius.md, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.md, marginBottom: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: FontSize.md }
 });
+

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, FlatList, Pressable, TextInput,
@@ -9,12 +9,16 @@ import { usersService, User, Document } from '../../src/services/users';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import Sidebar from '../../src/components/Sidebar';
+import { useCacheStore } from '../../src/store/cacheStore';
 
 export default function UsersScreen() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
-  const [items, setItems] = useState<User[]>([]);
-  const [total, setTotal] = useState(0);
+  const { cache, setCache, loadCache } = useCacheStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [items, setItems] = useState<User[]>(cache['/users'] || []);
+  const [total, setTotal] = useState(items.length);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -27,6 +31,15 @@ export default function UsersScreen() {
 
   const roleUpper = currentUser?.role?.toUpperCase();
   const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'HR';
+
+  useEffect(() => {
+    loadCache().then(() => {
+      if (cache['/users']) {
+        setItems(cache['/users']);
+        setTotal(cache['/users'].length);
+      }
+    });
+  }, []);
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
@@ -41,6 +54,7 @@ export default function UsersScreen() {
         : data;
       setItems(filtered);
       setTotal(filtered.length);
+      setCache('/users', data); // cache the unfiltered list for offline list access
 
       // If a user detail was open, refresh their data too
       if (selectedUser) {
@@ -50,7 +64,7 @@ export default function UsersScreen() {
     } catch (e) {
       console.error('[UsersScreen] Failed to load users', e);
     }
-  }, [search, isAdmin, selectedUser]);
+  }, [search, isAdmin, selectedUser, setCache]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   
@@ -137,8 +151,8 @@ export default function UsersScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
-          <Pressable testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+            <Ionicons name="menu-outline" size={26} color={Colors.text} />
           </Pressable>
           <Text style={styles.title}>Access Denied</Text>
         </View>
@@ -146,6 +160,7 @@ export default function UsersScreen() {
           <Ionicons name="lock-closed" size={48} color={Colors.error} />
           <Text style={styles.emptyText}>You do not have permission to view this screen.</Text>
         </View>
+        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </SafeAreaView>
     );
   }
@@ -154,8 +169,8 @@ export default function UsersScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+        <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+          <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Users</Text>
         <Text style={styles.count}>{total}</Text>
@@ -315,7 +330,19 @@ export default function UsersScreen() {
                         </Pressable>
                         <Pressable 
                           style={styles.circleBtn} 
-                          onPress={() => Linking.openURL(`https://wa.me/91${selectedUser.personalMobile?.replace(/\D/g, '')}?text=Hi ${selectedUser.full_name}`)}
+                          onPress={async () => {
+                            const name = selectedUser.full_name || 'User';
+                            const msg = `Hi ${name}`;
+                            let phone = selectedUser.personalMobile || '';
+                            let cleanPhone = phone.replace(/\D/g, '');
+                            if (cleanPhone.length === 10) {
+                              cleanPhone = '91' + cleanPhone;
+                            }
+                            const whatsappUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+                            await Linking.openURL(whatsappUrl).catch(() => {
+                              return Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`);
+                            });
+                          }}
                         >
                           <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
                         </Pressable>
@@ -471,6 +498,7 @@ export default function UsersScreen() {
           </View>
         </View>
       </Modal>
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -479,6 +507,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md },
   backBtn: { padding: Spacing.xs },
+  menuBtn: { padding: Spacing.xs },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
   count: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.primary, backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, paddingVertical: 2, borderRadius: BorderRadius.sm },
   searchRow: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
