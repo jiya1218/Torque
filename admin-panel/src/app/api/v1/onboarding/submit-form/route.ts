@@ -24,6 +24,14 @@ export async function POST(req: NextRequest) {
     })
     const hadRemark = !!existingUser?.onboardingRemark
 
+    // Delete existing documents for this user first to avoid duplicates
+    await prisma.document.deleteMany({
+      where: {
+        entityType: 'User',
+        entityId: context!.userId
+      }
+    })
+
     // Update user profile
     const user = await prisma.user.update({
       where: { id: context!.userId },

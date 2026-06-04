@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const skip = parseInt(searchParams.get('skip') || '0')
 
     const isManager = context?.role?.toUpperCase() === 'MANAGER'
-    const where: any = {}
+    const where: any = { deletedAt: null }
     
     // If user is a manager, only show their team
     if (isManager) {
