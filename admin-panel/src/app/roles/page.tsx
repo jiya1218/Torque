@@ -10,26 +10,26 @@ import {
 } from 'lucide-react'
 
 const GROUP_LABELS: Record<string, string> = {
-  auth: 'Authentication & Security',
-  role: 'Role & Permission Management',
-  user: 'Staff & User Management',
+  auth: 'Authentication and security',
+  role: 'Role and Permission Management',
   lead: 'Lead Management',
   rate: 'Rate Calculator',
-  rto: 'RTO Work Management',
+  rto: 'RTO work management',
   vahan: 'Vahan Work Management',
   fitness: 'Fitness Work Management',
   claims: 'Claims Management',
-  accounts: 'Accounts & Finance',
+  accounts: 'Accounts and Finance',
   hr: 'HR Management',
-  loan: 'Loan Department',
+  loan: 'Loan department',
   crm: 'CRM System',
   visit: 'Customer Visit Module',
   data: 'Data Management',
-  quotation: 'Quotation System',
-  dashboard: 'Dashboard & Analytics',
+  quotation: 'Quotation system',
+  dashboard: 'Dashboard and analytics',
   notification: 'Notifications',
-  template: 'Templates (WhatsApp/SMS)',
-  system: 'Admin Panel / System Config',
+  template: 'Template (whatsapp/sms)',
+  system: 'Admin panel/System Config',
+  user: 'staff and user management',
 }
 
 const GROUP_ICONS: Record<string, string> = {
@@ -41,10 +41,145 @@ const GROUP_ICONS: Record<string, string> = {
 }
 
 const GROUP_ORDER = [
-  'auth', 'role', 'user', 'lead', 'rate', 'rto', 'vahan', 'fitness', 'claims',
+  'auth', 'role', 'lead', 'rate', 'rto', 'vahan', 'fitness', 'claims',
   'accounts', 'hr', 'loan', 'crm', 'visit', 'data', 'quotation',
-  'dashboard', 'notification', 'template', 'system',
+  'dashboard', 'notification', 'template', 'system', 'user'
 ]
+
+const ACTION_LABELS: Record<string, string> = {
+  // auth
+  'auth.biometric_enable': 'Biometric Enable',
+  'auth.login': 'Login',
+  'auth.logout': 'Logout',
+  'auth.pin_setup': 'Pin Setup',
+  'auth.reset_access': 'Reset Access',
+  'auth.session_manage': 'Session Manage',
+  // role
+  'role.assign_permissions': 'Assign Permission',
+  'role.view': 'View',
+  'role.create': 'Create',
+  'role.delete': 'Delete',
+  'role.edit': 'Edit',
+  'role.manage_users': 'Manage Users',
+  // lead
+  'lead.assign': 'Assign',
+  'lead.change_status': 'Change Status',
+  'lead.create': 'Create',
+  'lead.delete': 'Delete',
+  'lead.edit': 'Edit',
+  'lead.export': 'Export',
+  'lead.import': 'Import',
+  'lead.view': 'View',
+  // rate
+  'rate.calculate': 'Calculate',
+  'rate.configure_tables': 'Configure Tables',
+  'rate.edit_rules': 'Edit Rules',
+  'rate.export': 'Export',
+  'rate.manage_addons': 'Manage Addons',
+  'rate.view': 'View',
+  // rto
+  'rto.track_payment': 'Track Payment',
+  'rto.delete': 'Delete',
+  'rto.create': 'Create',
+  'rto.edit': 'Edit',
+  'rto.update_status': 'Update Status',
+  'rto.view': 'View',
+  // vahan
+  'vahan.create': 'Create',
+  'vahan.delete': 'Delete',
+  'vahan.edit': 'Edit',
+  'vahan.track_payment': 'Track Payment',
+  'vahan.update_status': 'Update Status',
+  'vahan.view': 'View',
+  // fitness
+  'fitness.create': 'Create',
+  'fitness.edit': 'Edit',
+  'fitness.update_status': 'Update Status',
+  'fitness.delete': 'Delete',
+  'fitness.track_payment': 'Track Payment',
+  'fitness.view': 'View',
+  // claims
+  'claims.create': 'Create',
+  'claims.edit': 'Edit',
+  'claims.upload_documents': 'Upload Document',
+  'claims.delete': 'Delete',
+  'claims.update_status': 'Update Status',
+  'claims.view': 'View',
+  // accounts
+  'accounts.create_entry': 'Create Entry',
+  'accounts.delete_entry': 'Delete Entry',
+  'accounts.edit_entry': 'Edit Entry',
+  'accounts.export': 'Export',
+  'accounts.manage_salary': 'Manage Salary',
+  'accounts.view': 'View',
+  'accounts.view_reports': 'View Reports',
+  // hr
+  'hr.create': 'Create',
+  'hr.delete': 'Delete',
+  'hr.edit': 'Edit',
+  'hr.manage_attendance': 'Manage Attendance',
+  'hr.manage_leave': 'Manage Leave',
+  'hr.view': 'View',
+  'hr.view_performance': 'View Performance',
+  // loan
+  'loan.create': 'Create',
+  'loan.delete': 'Delete',
+  'loan.edit': 'Edit',
+  'loan.track_conversion': 'Track Conversion',
+  'loan.update_status': 'Update Status',
+  'loan.view': 'View',
+  // crm
+  'crm.create': 'Create',
+  'crm.delete': 'Delete',
+  'crm.edit': 'Edit',
+  'crm.manage_followups': 'Manage Followups',
+  'crm.view': 'View',
+  'crm.view_revenue': 'View Revenue',
+  // visit
+  'visit.create': 'Create',
+  'visit.edit': 'Edit',
+  'visit.track_location': 'Track Location',
+  'visit.delete': 'Delete',
+  'visit.manage_followups': 'Manage Followups',
+  'visit.view': 'View',
+  // data
+  'data.approve_changes': 'Approve Changes',
+  'data.create': 'Create',
+  'data.delete': 'Delete',
+  'data.edit': 'Edit',
+  'data.manage_documents': 'Manage Documentation',
+  'data.view': 'View',
+  // quotation
+  'quotation.create': 'Create',
+  'quotation.delete': 'Delete',
+  'quotation.edit': 'Edit',
+  'quotation.generate_pdf': 'Generate PDF',
+  'quotation.view': 'View',
+  'quotation.share': 'Share',
+  // dashboard
+  'dashboard.export': 'Export',
+  'dashboard.view_admin': 'View Admin',
+  'dashboard.view_agent': 'View Agent',
+  'dashboard.view_manager': 'View Manager',
+  // notification
+  'notification.configure': 'Configure',
+  'notification.manage': 'Manage',
+  'notification.send': 'Send',
+  'notification.view': 'View',
+  // template
+  'template.create': 'Create',
+  'template.delete': 'Delete',
+  'template.edit': 'Edit',
+  'template.view': 'View',
+  // system
+  'system.audit_logs_view': 'Audit Logs View',
+  'system.settings_manage': 'Settings Manage',
+  // user
+  'user.create': 'Create',
+  'user.edit': 'Edit',
+  'user.delete': 'Delete',
+  'user.view': 'View'
+}
 
 export default function RolesPage() {
   const { token, isLoading: authLoading } = useAuth()
@@ -217,7 +352,7 @@ export default function RolesPage() {
       if (!map[key]) {
         map[key] = {
           key,
-          displayName: action.replace(/_/g, ' '),
+          displayName: ACTION_LABELS[key] || action.replace(/_/g, ' '),
           group,
           ids: [],
           names: [],

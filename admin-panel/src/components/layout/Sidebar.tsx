@@ -110,9 +110,9 @@ export default function Sidebar() {
         ${open ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
       `}>
-        <div className="p-6 flex items-center justify-between">
+        <div className="p-6 pl-4 pr-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png?v=3" alt="Torque Auto Advisor" className="h-16 w-auto object-contain" />
+            <img src="/logo.png?v=3" alt="Torque Auto Advisor" className="h-16 w-auto -ml-1 object-contain" />
           </div>
           <button onClick={() => setOpen(false)} className="md:hidden p-1 hover:bg-gray-100 rounded-lg">
             <X size={20} />

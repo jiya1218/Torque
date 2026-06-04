@@ -24,7 +24,17 @@ export async function GET(
       }
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    return NextResponse.json(user)
+
+    const userDocs = await prisma.document.findMany({
+      where: {
+        entityType: 'User',
+        entityId: id
+      }
+    })
+    const userObj = user as any
+    userObj.documents = userDocs
+
+    return NextResponse.json(userObj)
   } catch (error) {
     console.error('User GET Error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

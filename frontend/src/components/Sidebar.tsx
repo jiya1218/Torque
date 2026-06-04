@@ -165,7 +165,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'flex-start',
-    paddingHorizontal: Spacing.lg, 
+    paddingLeft: Spacing.xs, 
+    paddingRight: Spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 55 : 45, 
     paddingBottom: Spacing.md, 
     borderBottomWidth: 1, 
@@ -182,6 +183,7 @@ const styles = StyleSheet.create({
   logoImage: { 
     width: 220, 
     height: 60,
+    marginLeft: -10,
     backgroundColor: 'transparent'
   },
   closeBtn: { 

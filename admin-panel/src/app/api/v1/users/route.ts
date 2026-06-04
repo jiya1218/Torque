@@ -59,6 +59,19 @@ export async function GET(req: NextRequest) {
 
     const users = await prisma.user.findMany(queryArgs)
 
+    if (!isMinimized && users.length > 0) {
+      const userIds = users.map(u => u.id)
+      const allUserDocs = await prisma.document.findMany({
+        where: {
+          entityType: 'User',
+          entityId: { in: userIds }
+        }
+      })
+      users.forEach((u: any) => {
+        u.documents = allUserDocs.filter(d => d.entityId === u.id)
+      })
+    }
+
     return NextResponse.json(users)
   } catch (error) {
     console.error('Users GET Error:', error)
