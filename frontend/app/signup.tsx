@@ -226,7 +226,7 @@ export default function SignupScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable onPress={() => router.replace('/')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={Colors.text} />
           </Pressable>
 

@@ -156,6 +156,7 @@ const ACTION_LABELS: Record<string, string> = {
   'quotation.generate_pdf': 'Generate PDF',
   'quotation.view': 'View',
   'quotation.share': 'Share',
+  'quotation.approve': 'Approve',
   // dashboard
   'dashboard.export': 'Export',
   'dashboard.view_admin': 'View Admin',
@@ -174,6 +175,7 @@ const ACTION_LABELS: Record<string, string> = {
   // system
   'system.audit_logs_view': 'Audit Logs View',
   'system.settings_manage': 'Settings Manage',
+  'system.view': 'View Settings',
   // user
   'user.create': 'Create',
   'user.edit': 'Edit',
@@ -670,9 +672,6 @@ export default function RolesPage() {
                                   <div className="min-w-0">
                                     <p className={`text-sm font-semibold truncate capitalize ${on ? 'text-blue-800' : 'text-gray-700'}`}>
                                       {p.displayName}
-                                    </p>
-                                    <p className="text-[10px] text-gray-400 font-mono truncate">
-                                      {p.names.join(', ')}
                                     </p>
                                   </div>
                                 </div>

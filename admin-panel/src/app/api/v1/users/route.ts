@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
 
     const users = await prisma.user.findMany(queryArgs)
 
+    let serializedUsers = users
     if (!isMinimized && users.length > 0) {
       const userIds = users.map(u => u.id)
       const allUserDocs = await prisma.document.findMany({
@@ -67,12 +68,14 @@ export async function GET(req: NextRequest) {
           entityId: { in: userIds }
         }
       })
-      users.forEach((u: any) => {
-        u.documents = allUserDocs.filter(d => d.entityId === u.id)
+      serializedUsers = users.map((u: any) => {
+        const uClone = { ...u }
+        uClone.documents = allUserDocs.filter(d => d.entityId === u.id)
+        return uClone
       })
     }
 
-    return NextResponse.json(users)
+    return NextResponse.json(serializedUsers)
   } catch (error) {
     console.error('Users GET Error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

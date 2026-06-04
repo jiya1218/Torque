@@ -5,7 +5,14 @@
  */
   import { supabase } from '../lib/supabase';
 
-const BASE_URL = 'https://torque-alpha.vercel.app';
+const getBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+  }
+  return 'https://torque-alpha.vercel.app';
+};
+
+const BASE_URL = getBaseUrl();
 
 async function getToken(): Promise<string | null> {
   try {
