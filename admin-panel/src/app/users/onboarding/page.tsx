@@ -9,6 +9,21 @@ import {
   X, MessageSquare
 } from 'lucide-react'
 
+const getGoogleDriveEmbedUrl = (url: string) => {
+  if (!url) return null;
+  // Match file/d/ID/
+  let match = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/file/d/${match[1]}/preview`;
+  }
+  // Match id=ID
+  match = url.match(/[?&]id=([a-zA-Z0-9-_]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/file/d/${match[1]}/preview`;
+  }
+  return null;
+}
+
 export default function OnboardingApprovalsPage() {
   const { user: currentUser, token, isLoading: authLoading } = useAuth()
   const apiFetch = useApi()
@@ -24,6 +39,10 @@ export default function OnboardingApprovalsPage() {
 
   const downloadFileDirectly = async (url: string, filename: string) => {
     try {
+      if (url.includes('drive.google.com')) {
+        window.open(url, '_blank')
+        return
+      }
       const response = await fetch(url)
       const blob = await response.blob()
       const blobUrl = window.URL.createObjectURL(blob)
@@ -506,20 +525,36 @@ export default function OnboardingApprovalsPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-6">
-              {previewDoc.filePath?.toLowerCase()?.endsWith('.pdf') ? (
-                <iframe
-                  src={`${previewDoc.filePath}#toolbar=0`}
-                  className="w-full h-full border-none rounded-xl bg-white"
-                  title="PDF Attachment Document Preview"
-                />
-              ) : (
-                <img
-                  src={previewDoc.filePath}
-                  alt={previewDoc.fileName}
-                  className="max-w-full max-h-full object-contain rounded-xl shadow-lg border border-slate-850"
-                />
-              )}
+            <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-6 w-full h-full">
+              {(() => {
+                const driveEmbed = getGoogleDriveEmbedUrl(previewDoc.filePath)
+                if (driveEmbed) {
+                  return (
+                    <iframe
+                      src={driveEmbed}
+                      className="w-full h-full border-none rounded-xl bg-white"
+                      title="Google Drive Document Preview"
+                      allow="autoplay"
+                    />
+                  )
+                }
+                if (previewDoc.filePath?.toLowerCase()?.endsWith('.pdf')) {
+                  return (
+                    <iframe
+                      src={`${previewDoc.filePath}#toolbar=0`}
+                      className="w-full h-full border-none rounded-xl bg-white"
+                      title="PDF Attachment Document Preview"
+                    />
+                  )
+                }
+                return (
+                  <img
+                    src={previewDoc.filePath}
+                    alt={previewDoc.fileName}
+                    className="max-w-full max-h-full object-contain rounded-xl shadow-lg border border-slate-850"
+                  />
+                )
+              })()}
             </div>
           </div>
         </div>
