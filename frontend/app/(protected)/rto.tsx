@@ -269,37 +269,41 @@ export default function RTOScreen() {
 
       {/* RTO Statistics */}
       <View style={styles.statsSection}>
-        <View style={styles.statCard}>
-          <Text style={styles.statCardTitle}>WORK STATUS</Text>
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: Colors.warning }]}>{pendingCount}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+        <View style={styles.statsColumn}>
+          <Text style={styles.columnHeading}>WORK STATUS</Text>
+          <View style={styles.columnStatsRow}>
+            <View style={styles.miniStatItem}>
+              <View style={[styles.statusDot, { backgroundColor: Colors.warning }]} />
+              <Text style={styles.miniStatLabel}>Pending:</Text>
+              <Text style={[styles.miniStatValue, { color: Colors.warning }]}>{pendingCount}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: Colors.primary }]}>{inProgressCount}</Text>
-              <Text style={styles.statLabel}>Active</Text>
+            <View style={styles.miniStatItem}>
+              <View style={[styles.statusDot, { backgroundColor: Colors.primary }]} />
+              <Text style={styles.miniStatLabel}>Active:</Text>
+              <Text style={[styles.miniStatValue, { color: Colors.primary }]}>{inProgressCount}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: Colors.success }]}>{completedCount}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
+            <View style={styles.miniStatItem}>
+              <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
+              <Text style={styles.miniStatLabel}>Completed:</Text>
+              <Text style={[styles.miniStatValue, { color: Colors.success }]}>{completedCount}</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.statCard}>
-          <Text style={styles.statCardTitle}>PAYMENT STATUS</Text>
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: Colors.error }]}>{paymentPendingCount}</Text>
-              <Text style={styles.statLabel}>Unpaid</Text>
+        <View style={styles.statsDividerLine} />
+
+        <View style={styles.statsColumn}>
+          <Text style={styles.columnHeading}>PAYMENT STATUS</Text>
+          <View style={styles.columnStatsRow}>
+            <View style={styles.miniStatItem}>
+              <View style={[styles.statusDot, { backgroundColor: Colors.error }]} />
+              <Text style={styles.miniStatLabel}>Unpaid:</Text>
+              <Text style={[styles.miniStatValue, { color: Colors.error }]}>{paymentPendingCount}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: Colors.success }]}>{paymentPaidCount}</Text>
-              <Text style={styles.statLabel}>Paid</Text>
+            <View style={styles.miniStatItem}>
+              <View style={[styles.statusDot, { backgroundColor: Colors.success }]} />
+              <Text style={styles.miniStatLabel}>Paid:</Text>
+              <Text style={[styles.miniStatValue, { color: Colors.success }]}>{paymentPaidCount}</Text>
             </View>
           </View>
         </View>
@@ -540,51 +544,52 @@ const styles = StyleSheet.create({
   menuBtn: { padding: Spacing.xs },
   statsSection: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    gap: Spacing.md,
   },
-  statCard: {
+  statsColumn: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.sm,
   },
-  statCardTitle: {
-    fontSize: 9,
+  columnHeading: {
+    fontSize: 10,
     fontWeight: '800',
     color: Colors.textMuted,
     letterSpacing: 0.5,
-    marginBottom: Spacing.xs,
-    textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
-  statRow: {
+  columnStatsRow: {
+    flexDirection: 'column',
+    gap: 6,
+  },
+  miniStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 6,
   },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  statValue: {
-    fontSize: FontSize.md,
-    fontWeight: '900',
+  miniStatLabel: {
+    fontSize: FontSize.sm - 1,
+    color: Colors.textMuted,
+    fontWeight: '600',
   },
-  statLabel: {
-    fontSize: 8,
-    color: Colors.textLight,
-    marginTop: 1,
+  miniStatValue: {
+    fontSize: FontSize.sm - 1,
+    fontWeight: '800',
   },
-  statDivider: {
+  statsDividerLine: {
     width: 1,
-    height: 18,
     backgroundColor: Colors.border,
+    marginVertical: 2,
   },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

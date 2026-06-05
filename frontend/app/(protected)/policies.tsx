@@ -139,6 +139,27 @@ export default function PoliciesScreen() {
     end_date: '',
     lead_id: ''
   });
+  const [loadingLeads, setLoadingLeads] = useState(false);
+
+  const fetchLeads = async () => {
+    setLoadingLeads(true);
+    try {
+      const lData = await api.get<any>('/leads');
+      const leadsArr = Array.isArray(lData) ? lData : lData?.leads || lData?.items || [];
+      setLeads(leadsArr);
+      setCache('/leads', { items: leadsArr });
+    } catch (err) {
+      console.error('Error fetching leads in Policies:', err);
+    } finally {
+      setLoadingLeads(false);
+    }
+  };
+
+  useEffect(() => {
+    if (addModalVisible) {
+      fetchLeads();
+    }
+  }, [addModalVisible]);
 
   // Load cache on mount
   useEffect(() => {
@@ -302,6 +323,8 @@ export default function PoliciesScreen() {
                 selectedValue={newPolicy.lead_id}
                 onSelect={(val) => setNewPolicy(prev => ({ ...prev, lead_id: val }))}
                 searchable
+                onOpen={fetchLeads}
+                loading={loadingLeads}
               />
 
               <View style={styles.field}>
