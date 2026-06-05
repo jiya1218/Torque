@@ -11,6 +11,8 @@
     "dev:frontend": "cd frontend && npm run web",
     "dev": "npm run dev:admin & npm run dev:frontend",
     "prisma:generate": "cd admin-panel && npx prisma generate",
-    "prisma:push": "cd admin-panel && npx prisma db push"
+    "prisma:push": "cd admin-panel && npx prisma db push",
+    "build": "cd admin-panel && npx prisma generate && npm run build",
+    "vercel-build": "cd admin-panel && npx prisma generate && npm run build"
   }
 }
