@@ -112,9 +112,35 @@ export async function DELETE(
     const permanent = searchParams.get('permanent') === 'true'
 
     if (permanent) {
-      // 1. Delete from Supabase Auth first
-      await supabaseAdmin.auth.admin.deleteUser(id)
-      // 2. Delete from Prisma DB
+      // 1. Clean up referencing records in other tables to avoid foreign key violations
+      await prisma.document.deleteMany({
+        where: {
+          OR: [
+            { entityId: id, entityType: 'User' },
+            { uploadedBy: id }
+          ]
+        }
+      })
+      await prisma.notification.deleteMany({ where: { userId: id } })
+      await prisma.attendance.deleteMany({ where: { userId: id } })
+      await prisma.salary.deleteMany({ where: { userId: id } })
+      await prisma.leaveRequest.deleteMany({
+        where: {
+          OR: [
+            { userId: id },
+            { approvedBy: id }
+          ]
+        }
+      })
+
+      // 2. Delete from Supabase Auth
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(id)
+      } catch (authErr) {
+        console.warn('Failed to delete user from Supabase Auth:', authErr)
+      }
+
+      // 3. Delete from Prisma DB
       await prisma.user.delete({ where: { id } })
     } else {
       // Soft delete: Just set deletedAt

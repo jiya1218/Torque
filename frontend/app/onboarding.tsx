@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/context/AuthContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/utils/theme';
@@ -108,20 +109,71 @@ export default function OnboardingScreen() {
     }
   };
 
+  const decodeBase64ToArrayBuffer = (base64: string): ArrayBuffer => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const lookup = new Uint8Array(256);
+    for (let i = 0; i < chars.length; i++) {
+      lookup[chars.charCodeAt(i)] = i;
+    }
+    
+    let bufferLength = base64.length * 0.75;
+    if (base64[base64.length - 1] === '=') {
+      bufferLength--;
+      if (base64[base64.length - 2] === '=') {
+        bufferLength--;
+      }
+    }
+
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const bytes = new Uint8Array(arrayBuffer);
+
+    let p = 0;
+    for (let i = 0; i < base64.length; i += 4) {
+      const base64Val1 = lookup[base64.charCodeAt(i)];
+      const base64Val2 = lookup[base64.charCodeAt(i + 1)];
+      const base64Val3 = lookup[base64.charCodeAt(i + 2)];
+      const base64Val4 = lookup[base64.charCodeAt(i + 3)];
+
+      bytes[p++] = (base64Val1 << 2) | (base64Val2 >> 4);
+      if (p < bufferLength) {
+        bytes[p++] = ((base64Val2 & 15) << 4) | (base64Val3 >> 2);
+      }
+      if (p < bufferLength) {
+        bytes[p++] = ((base64Val3 & 3) << 6) | (base64Val4 & 63);
+      }
+    }
+
+    return arrayBuffer;
+  };
+
   const uploadFile = async (doc: OnboardingDoc): Promise<string | null> => {
     try {
-      const fileExt = doc.name.split('.').pop();
+      const fileExt = doc.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${Date.now()}-${doc.type}.${fileExt}`;
       const filePath = `onboarding/${fileName}`;
 
-      // Convert URI to Blob for Supabase
-      const response = await fetch(doc.uri);
-      const blob = await response.blob();
+      let contentType = 'application/octet-stream';
+      if (fileExt === 'pdf') {
+        contentType = 'application/pdf';
+      } else if (fileExt === 'jpg' || fileExt === 'jpeg') {
+        contentType = 'image/jpeg';
+      } else if (fileExt === 'png') {
+        contentType = 'image/png';
+      }
 
+      // Read file as Base64 using expo-file-system
+      const base64Str = await FileSystem.readAsStringAsync(doc.uri, {
+        encoding: 'base64',
+      });
+
+      // Convert Base64 to ArrayBuffer
+      const arrayBuffer = decodeBase64ToArrayBuffer(base64Str);
+
+      // Upload directly to Supabase storage
       const { error } = await supabase.storage
         .from('documents')
-        .upload(filePath, blob, {
-          contentType: blob.type,
+        .upload(filePath, arrayBuffer, {
+          contentType,
           upsert: true
         });
 
