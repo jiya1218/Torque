@@ -298,16 +298,22 @@ export default function LoansScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>LOAN TYPE</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Auto, Home, Personal"
-                  placeholderTextColor={Colors.textLight}
-                  value={newLoan.loanType}
-                  onChangeText={(val) => setNewLoan({ ...newLoan, loanType: val })}
-                />
-              </View>
+              <DropdownSelector
+                label="Loan Type"
+                placeholder="Select Loan Type"
+                options={[
+                  { label: 'Auto Loan', value: 'Auto' },
+                  { label: 'Home Loan', value: 'Home' },
+                  { label: 'Personal Loan', value: 'Personal' },
+                  { label: 'Business Loan', value: 'Business' },
+                  { label: 'Education Loan', value: 'Education' },
+                  { label: 'Land/Property Loan', value: 'Land/Property' },
+                  { label: 'Gold Loan', value: 'Gold' },
+                  { label: 'Other', value: 'Other' }
+                ]}
+                selectedValue={newLoan.loanType}
+                onSelect={(val) => setNewLoan(prev => ({ ...prev, loanType: val }))}
+              />
 
               <View style={styles.field}>
                 <Text style={styles.label}>AMOUNT *</Text>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, Modal, TextInput, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src/utils/theme';
@@ -8,6 +8,113 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
+import DatePickerSelector from '../../src/components/DatePickerSelector';
+
+interface DropdownProps {
+  label: string;
+  placeholder: string;
+  options: { label: string; value: string }[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  searchable?: boolean;
+  onOpen?: () => void;
+  loading?: boolean;
+}
+
+function DropdownSelector({ label, placeholder, options, selectedValue, onSelect, searchable = false, onOpen, loading = false }: DropdownProps) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const selectedOption = options.find(o => o.value === selectedValue);
+  
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  return (
+    <View style={styles.dropdownField}>
+      <Text style={styles.label}>{label.toUpperCase()}</Text>
+      <Pressable 
+        style={styles.dropdownTrigger} 
+        onPress={() => {
+          setSearchQuery('');
+          setModalVisible(true);
+          if (onOpen) onOpen();
+        }}
+      >
+        <Text style={[styles.dropdownTriggerText, !selectedOption && styles.placeholderText]}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : (
+          <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+        )}
+      </Pressable>
+      
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.dropdownModalContent}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>{label}</Text>
+              <Pressable onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            
+            {searchable && (
+              <View style={styles.dropdownSearchContainer}>
+                <Ionicons name="search" size={20} color={Colors.textLight} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.dropdownSearchInput}
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                  placeholderTextColor={Colors.textLight}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textLight} />
+                  </Pressable>
+                )}
+              </View>
+            )}
+            
+            <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+              {filteredOptions.length === 0 ? (
+                <Text style={styles.noOptionsText}>No options found</Text>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = opt.value === selectedValue;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      style={[styles.optionItem, isSelected && styles.optionItemActive]}
+                      onPress={() => {
+                        onSelect(opt.value);
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                        {opt.label}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark" size={20} color={Colors.primary} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 export default function HRScreen() {
   const router = useRouter();
@@ -18,6 +125,7 @@ export default function HRScreen() {
   const [total, setTotal] = useState(cache['/hr/users']?.items?.length || 0);
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [onLeaveCount, setOnLeaveCount] = useState(0);
 
   // Add Employee Modal states
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -31,6 +139,7 @@ export default function HRScreen() {
     roleId: '',
     managerId: '',
     highestQualification: '',
+    joiningDate: '',
     personalMobile: '',
     homeMobile: ''
   });
@@ -69,6 +178,24 @@ export default function HRScreen() {
         setRoles(rData);
         setCache('/hr/roles', rData);
       }
+
+      // Fetch leaves
+      try {
+        const leavesRes = await api.get<any>('/hr/leaves?status=approved').catch(() => []);
+        const leavesList = Array.isArray(leavesRes) ? leavesRes : leavesRes.items || [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const activeLeaves = leavesList.filter((l: any) => {
+          const start = new Date(l.startDate);
+          const end = new Date(l.endDate);
+          start.setHours(0,0,0,0);
+          end.setHours(23,59,59,999);
+          return today >= start && today <= end;
+        });
+        setOnLeaveCount(activeLeaves.length);
+      } catch (err) {
+        console.warn('Failed to fetch leaves:', err);
+      }
     } catch (e) {
       console.error('[HRScreen] Failed to load HR users', e);
     }
@@ -91,8 +218,10 @@ export default function HRScreen() {
         roleId: newEmployee.roleId || null,
         managerId: newEmployee.managerId || null,
         highestQualification: newEmployee.highestQualification.trim() || null,
+        joiningDate: newEmployee.joiningDate ? new Date(newEmployee.joiningDate).toISOString() : null,
         personalMobile: newEmployee.personalMobile.trim() || null,
-        homeMobile: newEmployee.homeMobile.trim() || null
+        homeMobile: newEmployee.homeMobile.trim() || null,
+        isActive: false // Force onboarding by submitting isActive: false
       });
       setAddModalVisible(false);
       setNewEmployee({
@@ -102,6 +231,7 @@ export default function HRScreen() {
         roleId: '',
         managerId: '',
         highestQualification: '',
+        joiningDate: '',
         personalMobile: '',
         homeMobile: ''
       });
@@ -144,12 +274,27 @@ export default function HRScreen() {
         <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
-        <Text style={styles.title}>HR / Employees</Text>
+        <Text style={styles.title}>HR/Employee management</Text>
         <View style={styles.headerRight}>
-          <View style={styles.countBadge}><Text style={styles.countText}>{total}</Text></View>
           <Pressable style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
             <Ionicons name="add" size={22} color={Colors.primary} />
           </Pressable>
+        </View>
+      </View>
+
+      {/* Stats Cards */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Total Staff</Text>
+          <Text style={styles.statVal}>{total}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Active Now</Text>
+          <Text style={[styles.statVal, { color: Colors.success }]}>{items.filter(u => u.isActive).length}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>On Leave</Text>
+          <Text style={[styles.statVal, { color: Colors.error }]}>{onLeaveCount}</Text>
         </View>
       </View>
 
@@ -242,28 +387,34 @@ export default function HRScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>ROLE ID (OPTIONAL UUID)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Paste Role UUID"
-                  placeholderTextColor={Colors.textLight}
-                  value={newEmployee.roleId}
-                  onChangeText={(val) => setNewEmployee({ ...newEmployee, roleId: val })}
-                />
-                <Text style={styles.hint}>Available Roles: {roles.map(r => `${r.name} (${r.id.substring(0, 4)}...)`).join(', ')}</Text>
-              </View>
+              <DropdownSelector
+                label="Role *"
+                placeholder="Choose role"
+                options={roles.map(r => ({ label: r.name, value: r.id }))}
+                selectedValue={newEmployee.roleId}
+                onSelect={(val) => setNewEmployee(prev => ({ ...prev, roleId: val }))}
+              />
 
-              <View style={styles.field}>
-                <Text style={styles.label}>MANAGER ID (OPTIONAL UUID)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Paste Manager User UUID"
-                  placeholderTextColor={Colors.textLight}
-                  value={newEmployee.managerId}
-                  onChangeText={(val) => setNewEmployee({ ...newEmployee, managerId: val })}
+              {(roles.find(r => r.id === newEmployee.roleId)?.name?.toUpperCase().includes('EXECUTIVE') || 
+                roles.find(r => r.id === newEmployee.roleId)?.name?.toUpperCase().includes('SALES')) && (
+                <DropdownSelector
+                  label="Assign Manager *"
+                  placeholder="Choose manager"
+                  options={items.filter(u => {
+                    const rName = u.role?.name?.toUpperCase() || '';
+                    return rName === 'MANAGER' || rName === 'HR MANAGER';
+                  }).map(m => ({ label: `${m.fullName} (${m.role?.name || 'Manager'})`, value: m.id }))}
+                  selectedValue={newEmployee.managerId}
+                  onSelect={(val) => setNewEmployee(prev => ({ ...prev, managerId: val }))}
                 />
-              </View>
+              )}
+
+              <DatePickerSelector
+                label="Joining Date"
+                value={newEmployee.joiningDate}
+                onChange={(val) => setNewEmployee(prev => ({ ...prev, joiningDate: val }))}
+                placeholder="Select Joining Date"
+              />
 
               <View style={styles.field}>
                 <Text style={styles.label}>HIGHEST QUALIFICATION</Text>
@@ -336,4 +487,29 @@ const styles = StyleSheet.create({
   hint: { fontSize: 10, color: Colors.textLight, marginTop: 4 },
   submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+  statsContainer: { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, backgroundColor: '#FFFFFF' },
+  statCard: { flex: 1, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, padding: Spacing.md, alignItems: 'center' },
+  statLabel: { fontSize: FontSize.xs - 1, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: 4 },
+  statVal: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.text },
+
+  // Dropdown selector styles
+  dropdownField: { marginBottom: Spacing.md },
+  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, marginTop: 4 },
+  dropdownTriggerText: { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
+  placeholderText: { color: Colors.textLight },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  dropdownModalContent: { backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, maxHeight: '85%', paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
+  dropdownModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  dropdownModalTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
+  modalCloseBtn: { padding: Spacing.xs },
+  dropdownSearchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceMuted || '#F1F5F9', borderRadius: BorderRadius.md, marginHorizontal: Spacing.lg, marginVertical: Spacing.sm, paddingHorizontal: Spacing.sm, height: 44 },
+  searchIcon: { marginRight: Spacing.xs },
+  dropdownSearchInput: { flex: 1, fontSize: FontSize.sm, color: Colors.text, height: '100%' },
+  searchClearBtn: { padding: Spacing.xs },
+  optionsList: { paddingHorizontal: Spacing.lg },
+  optionItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceMuted || '#F1F5F9' },
+  optionItemActive: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.sm },
+  optionText: { fontSize: FontSize.md, color: Colors.text },
+  optionTextActive: { color: Colors.primary, fontWeight: '600' },
+  noOptionsText: { textAlign: 'center', color: Colors.textLight, paddingVertical: Spacing.xl, fontSize: FontSize.sm },
 });

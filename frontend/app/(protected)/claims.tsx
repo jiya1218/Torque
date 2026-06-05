@@ -7,6 +7,7 @@ import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src
 import { Ionicons } from '@expo/vector-icons';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
+import DatePickerSelector from '../../src/components/DatePickerSelector';
 
 interface DropdownProps {
   label: string;
@@ -130,7 +131,7 @@ export default function ClaimsScreen() {
     policyNumber: '',
     customerName: '',
     vehicleNumber: '',
-    claimType: 'accident',
+    claimType: 'Accidental Damage',
     claimAmount: '',
     incident_date: ''
   });
@@ -184,8 +185,12 @@ export default function ClaimsScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleAddClaim = async () => {
-    if (!newClaim.policyNumber.trim() || !newClaim.customerName.trim() || !newClaim.claimAmount) {
-      Alert.alert('Error', 'Policy Number, Customer Name, and Amount are required.');
+    if (!newClaim.policyNumber.trim()) {
+      Alert.alert('Error', 'Policy selection is compulsory.');
+      return;
+    }
+    if (!newClaim.customerName.trim() || !newClaim.claimAmount) {
+      Alert.alert('Error', 'Customer Name and Amount are required.');
       return;
     }
     setSaving(true);
@@ -199,7 +204,7 @@ export default function ClaimsScreen() {
         incident_date: newClaim.incident_date ? new Date(newClaim.incident_date).toISOString() : null
       });
       setAddModalVisible(false);
-      setNewClaim({ policyNumber: '', customerName: '', vehicleNumber: '', claimType: 'accident', claimAmount: '', incident_date: '' });
+      setNewClaim({ policyNumber: '', customerName: '', vehicleNumber: '', claimType: 'Accidental Damage', claimAmount: '', incident_date: '' });
       Alert.alert('Success', 'Claim filed successfully!');
       load();
     } catch (e: any) {
@@ -286,7 +291,7 @@ export default function ClaimsScreen() {
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <DropdownSelector
-                label="Select Existing Policy"
+                label="Select Policy *"
                 placeholder="Choose a policy"
                 options={policies.map(p => ({
                   label: `${p.policyNumber} (${p.lead?.clientName || 'Direct Policy'})`,
@@ -312,34 +317,33 @@ export default function ClaimsScreen() {
               <View style={styles.field}>
                 <Text style={styles.label}>POLICY NUMBER *</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. POL123456"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Policy number"
                   placeholderTextColor={Colors.textLight}
                   value={newClaim.policyNumber}
-                  onChangeText={(val) => setNewClaim({ ...newClaim, policyNumber: val })}
+                  editable={false}
                 />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>CUSTOMER NAME *</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. MEHRA KARAN"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Customer name"
                   placeholderTextColor={Colors.textLight}
                   value={newClaim.customerName}
-                  onChangeText={(val) => setNewClaim({ ...newClaim, customerName: val })}
+                  editable={false}
                 />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>VEHICLE NUMBER</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. GJ-01-XX-0000"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Vehicle number"
                   placeholderTextColor={Colors.textLight}
-                  autoCapitalize="characters"
                   value={newClaim.vehicleNumber}
-                  onChangeText={(val) => setNewClaim({ ...newClaim, vehicleNumber: val })}
+                  editable={false}
                 />
               </View>
 
@@ -355,27 +359,27 @@ export default function ClaimsScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>CLAIM TYPE</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. accident, theft, medical"
-                  placeholderTextColor={Colors.textLight}
-                  value={newClaim.claimType}
-                  onChangeText={(val) => setNewClaim({ ...newClaim, claimType: val })}
-                />
-              </View>
+              <DropdownSelector
+                label="Claim Type"
+                placeholder="Select Claim Type"
+                options={[
+                  { label: 'Accidental Damage', value: 'Accidental Damage' },
+                  { label: 'Theft', value: 'Theft' },
+                  { label: 'Natural Calamity', value: 'Natural Calamity' },
+                  { label: 'Third Party Liability', value: 'Third Party Liability' },
+                  { label: 'Fire', value: 'Fire' },
+                  { label: 'Other', value: 'Other' }
+                ]}
+                selectedValue={newClaim.claimType}
+                onSelect={(val) => setNewClaim({ ...newClaim, claimType: val })}
+              />
 
-              <View style={styles.field}>
-                <Text style={styles.label}>INCIDENT DATE (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2024-05-20"
-                  placeholderTextColor={Colors.textLight}
-                  value={newClaim.incident_date}
-                  onChangeText={(val) => setNewClaim({ ...newClaim, incident_date: val })}
-                />
-              </View>
+              <DatePickerSelector
+                label="Incident Date"
+                value={newClaim.incident_date}
+                onChange={(val) => setNewClaim({ ...newClaim, incident_date: val })}
+                placeholder="Select Incident Date"
+              />
 
               <Pressable style={styles.submitBtn} onPress={handleAddClaim} disabled={saving}>
                 {saving ? (

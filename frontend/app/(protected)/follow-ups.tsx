@@ -8,6 +8,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
 import AppFooter from '../../src/components/AppFooter';
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  } as any),
+});
+
 
 const getDaysInMonth = (year: number, month: number) => {
   return new Date(year, month + 1, 0).getDate();
@@ -554,6 +564,30 @@ export default function FollowUpsScreen() {
         scheduled_at: new Date(newFollowUp.scheduled_at).toISOString(),
         notes: newFollowUp.notes.trim() || null
       });
+
+      // Schedule local notification
+      try {
+        const triggerDate = new Date(newFollowUp.scheduled_at);
+        const seconds = Math.floor((triggerDate.getTime() - Date.now()) / 1000);
+        if (seconds > 0) {
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status === 'granted') {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: `Follow-up Reminder: ${newFollowUp.lead_name}`,
+                body: `${newFollowUp.type.toUpperCase()} follow-up is scheduled now.${newFollowUp.notes ? ` Notes: ${newFollowUp.notes}` : ''}`,
+                data: { leadId: newFollowUp.lead_id },
+              },
+              trigger: {
+                seconds: seconds,
+              } as any,
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error('Failed to schedule local notification:', notifErr);
+      }
+
       setAddModalVisible(false);
       setNewFollowUp({ lead_id: '', lead_name: '', type: 'call', scheduled_at: '', notes: '' });
       setSelectedDate('');

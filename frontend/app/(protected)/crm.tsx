@@ -116,6 +116,26 @@ export default function CRMScreen() {
         </Pressable>
       </View>
 
+      {/* Stats Cards */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Total Clients</Text>
+          <Text style={styles.statVal}>{total}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Pending KYC</Text>
+          <Text style={[styles.statVal, { color: Colors.warning }]}>
+            {items.filter(i => (i.kyc_status || i.kycStatus)?.toLowerCase() === 'pending').length}
+          </Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Verified KYC</Text>
+          <Text style={[styles.statVal, { color: Colors.success }]}>
+            {items.filter(i => (i.kyc_status || i.kycStatus)?.toLowerCase() === 'verified').length}
+          </Text>
+        </View>
+      </View>
+
       {/* Search Row */}
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
@@ -297,4 +317,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
   submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+  statsContainer: { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, backgroundColor: '#FFFFFF' },
+  statCard: { flex: 1, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, padding: Spacing.md, alignItems: 'center' },
+  statLabel: { fontSize: FontSize.xs - 1, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: 4 },
+  statVal: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.text },
 });

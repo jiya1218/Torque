@@ -7,6 +7,7 @@ import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src
 import { Ionicons } from '@expo/vector-icons';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
+import DatePickerSelector from '../../src/components/DatePickerSelector';
 
 interface DropdownProps {
   label: string;
@@ -181,6 +182,10 @@ export default function FitnessScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleAddFitness = async () => {
+    if (!newFitness.lead_id) {
+      Alert.alert('Error', 'Lead selection is compulsory.');
+      return;
+    }
     if (!newFitness.customer_name.trim() || !newFitness.vehicle_number.trim()) {
       Alert.alert('Error', 'Customer Name and Vehicle Number are required.');
       return;
@@ -275,39 +280,58 @@ export default function FitnessScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <DropdownSelector
+                label="Select Lead *"
+                placeholder="Choose a lead"
+                options={leads.map(l => ({
+                  label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
+                  value: l.id
+                }))}
+                selectedValue={newFitness.lead_id}
+                onSelect={(val) => {
+                  const lead = leads.find(l => l.id === val);
+                  if (lead) {
+                    setNewFitness(prev => ({
+                      ...prev,
+                      lead_id: val,
+                      customer_name: lead.clientName || '',
+                      vehicle_number: lead.vehicleNo || ''
+                    }));
+                  }
+                }}
+                searchable
+                onOpen={fetchLeads}
+                loading={loadingLeads}
+              />
+
               <View style={styles.field}>
                 <Text style={styles.label}>CUSTOMER NAME *</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. MEHRA KARAN"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Customer name"
                   placeholderTextColor={Colors.textLight}
                   value={newFitness.customer_name}
-                  onChangeText={(val) => setNewFitness({ ...newFitness, customer_name: val })}
+                  editable={false}
                 />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>VEHICLE NUMBER *</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. GJ-01-XX-0000"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Vehicle number"
                   placeholderTextColor={Colors.textLight}
-                  autoCapitalize="characters"
                   value={newFitness.vehicle_number}
-                  onChangeText={(val) => setNewFitness({ ...newFitness, vehicle_number: val })}
+                  editable={false}
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>TEST DATE (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2026-06-25"
-                  placeholderTextColor={Colors.textLight}
-                  value={newFitness.test_date}
-                  onChangeText={(val) => setNewFitness({ ...newFitness, test_date: val })}
-                />
-              </View>
+              <DatePickerSelector
+                label="Test Date"
+                value={newFitness.test_date}
+                onChange={(val) => setNewFitness(prev => ({ ...prev, test_date: val }))}
+                placeholder="Select Test Date"
+              />
 
               <View style={styles.field}>
                 <Text style={styles.label}>FEES</Text>
@@ -320,31 +344,6 @@ export default function FitnessScreen() {
                   onChangeText={(val) => setNewFitness({ ...newFitness, fees: val })}
                 />
               </View>
-
-              <DropdownSelector
-                label="Link to Lead (Optional)"
-                placeholder="Choose a lead"
-                options={[
-                  { label: "None", value: "" },
-                  ...leads.map(l => ({
-                    label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
-                    value: l.id
-                  }))
-                ]}
-                selectedValue={newFitness.lead_id}
-                onSelect={(val) => {
-                  const lead = leads.find(l => l.id === val);
-                  setNewFitness(prev => ({
-                    ...prev,
-                    lead_id: val,
-                    customer_name: lead ? lead.clientName : prev.customer_name,
-                    vehicle_number: lead ? (lead.vehicleNo || prev.vehicle_number) : prev.vehicle_number
-                  }));
-                }}
-                searchable
-                onOpen={fetchLeads}
-                loading={loadingLeads}
-              />
 
               <Pressable style={styles.submitBtn} onPress={handleAddFitness} disabled={saving}>
                 {saving ? (

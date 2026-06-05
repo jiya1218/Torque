@@ -12,7 +12,10 @@ export async function GET(
 
   try {
     const { id } = await params;
-    if (context.userId !== id && !context.permissions.includes('users.view')) {
+    const userRole = context.role?.toUpperCase()
+    const isAllowedRole = userRole === 'SUPER ADMIN' || userRole === 'ADMIN' || userRole === 'HR MANAGER'
+
+    if (context.userId !== id && !context.permissions.includes('users.view') && !isAllowedRole) {
       return NextResponse.json({ error: 'Forbidden: Missing users.view permission' }, { status: 403 })
     }
     const user = await prisma.user.findUnique({

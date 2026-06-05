@@ -79,10 +79,11 @@ const normalizeUser = (u: any): User => {
 
 export const usersService = {
   /** Fetch a paginated list of users. */
-  list: async (params: { skip?: number; limit?: number; search?: string } = {}): Promise<User[]> => {
+  list: async (params: { skip?: number; limit?: number; search?: string; onboarding?: boolean } = {}): Promise<User[]> => {
     const qs = new URLSearchParams();
     if (params.skip !== undefined) qs.set('skip', String(params.skip));
     if (params.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params.onboarding !== undefined) qs.set('onboarding', String(params.onboarding));
     const query = qs.toString() ? `?${qs}` : '';
     const res = await api.get<any[]>(`${BASE}/${query}`);
     return (Array.isArray(res) ? res : []).map(normalizeUser);

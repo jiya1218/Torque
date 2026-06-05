@@ -25,7 +25,24 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  return NextResponse.json(requests)
+  const leadIds = requests.filter(r => r.entityType === 'Lead').map(r => r.entityId)
+  const leads = leadIds.length > 0 ? await prisma.lead.findMany({
+    where: { id: { in: leadIds } },
+    select: { id: true, clientName: true, vehicleNo: true, clientPhone: true }
+  }) : []
+
+  const serialized = requests.map((req: any) => {
+    const reqJson = JSON.parse(JSON.stringify(req))
+    if (reqJson.entityType === 'Lead') {
+      const lead = leads.find(l => l.id === reqJson.entityId)
+      if (lead) {
+        reqJson.leadDetails = lead
+      }
+    }
+    return reqJson
+  })
+
+  return NextResponse.json(serialized)
 }
 
 // POST — submit a new change request

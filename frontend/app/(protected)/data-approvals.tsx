@@ -125,6 +125,26 @@ export default function DataApprovalsScreen() {
                 </View>
               </View>
 
+              {item.leadDetails && (
+                <View style={styles.leadDetailsContainer}>
+                  <Text style={styles.leadDetailsTitle}>Lead Info</Text>
+                  <View style={styles.leadDetailsRow}>
+                    <View style={styles.leadDetailsCol}>
+                      <Text style={styles.leadDetailsLabel}>Name</Text>
+                      <Text style={styles.leadDetailsText}>{item.leadDetails.clientName || '—'}</Text>
+                    </View>
+                    <View style={styles.leadDetailsCol}>
+                      <Text style={styles.leadDetailsLabel}>Phone</Text>
+                      <Text style={styles.leadDetailsText}>{item.leadDetails.contactNo || '—'}</Text>
+                    </View>
+                    <View style={styles.leadDetailsCol}>
+                      <Text style={styles.leadDetailsLabel}>Vehicle</Text>
+                      <Text style={styles.leadDetailsText}>{item.leadDetails.vehicleNo || '—'}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
               <View style={styles.changeDetails}>
                 <Text style={styles.fieldLabel}>Field: <Text style={{ color: Colors.text, fontWeight: '700' }}>{item.field}</Text></Text>
                 <View style={styles.valuesRow}>
@@ -281,4 +301,10 @@ const styles = StyleSheet.create({
   input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
   submitBtn: { height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+  leadDetailsContainer: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.sm, padding: Spacing.md, marginBottom: Spacing.md },
+  leadDetailsTitle: { fontSize: FontSize.xs - 1, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: Spacing.sm },
+  leadDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.md },
+  leadDetailsCol: { flex: 1 },
+  leadDetailsLabel: { fontSize: 9, fontWeight: '700', color: Colors.textLight, textTransform: 'uppercase', marginBottom: 2 },
+  leadDetailsText: { fontSize: FontSize.sm - 1, color: Colors.text, fontWeight: '500' },
 });

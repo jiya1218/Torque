@@ -4,22 +4,40 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { validateAuth } from '@/lib/auth-guard'
 
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const isOnboarding = searchParams.get('onboarding') === 'true'
+
   let { error, context } = await validateAuth(req, 'users.view')
   
   let isMinimized = false
   if (error) {
-    // If they don't have users.view, check alternative permissions (e.g. leads page needs to list assignees)
-    const altAuth = await validateAuth(req, 'lead.view')
-    if (altAuth.error) {
-      const altAuth2 = await validateAuth(req, 'crm.view')
-      if (altAuth2.error) {
-        return error // Return the original 403 Forbidden
+    if (isOnboarding) {
+      // Validate token generally and check if role is administrative
+      const altAuth = await validateAuth(req)
+      if (!altAuth.error && altAuth.context) {
+        const role = altAuth.context.role?.toUpperCase()
+        if (role === 'SUPER ADMIN' || role === 'ADMIN' || role === 'HR MANAGER') {
+          context = altAuth.context
+          error = undefined
+          isMinimized = false
+        }
       }
-      context = altAuth2.context
-    } else {
-      context = altAuth.context
     }
-    isMinimized = true
+
+    if (error) {
+      // If they don't have users.view, check alternative permissions (e.g. leads page needs to list assignees)
+      const altAuth = await validateAuth(req, 'lead.view')
+      if (altAuth.error) {
+        const altAuth2 = await validateAuth(req, 'crm.view')
+        if (altAuth2.error) {
+          return error // Return the original 403 Forbidden
+        }
+        context = altAuth2.context
+      } else {
+        context = altAuth.context
+      }
+      isMinimized = true
+    }
   }
 
   try {
@@ -99,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     const isManager = context?.role?.toUpperCase() === 'MANAGER'
     let finalRoleId = roleId
-    let finalIsActive = true // Admins create active users by default
+    let finalIsActive = body.isActive !== undefined ? body.isActive : true // Admins create active users by default
 
     if (isManager) {
       // 1. Managers can ONLY create Executives

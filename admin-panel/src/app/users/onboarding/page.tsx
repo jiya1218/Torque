@@ -47,7 +47,7 @@ export default function OnboardingApprovalsPage() {
   const fetchPendingUsers = useCallback(async () => {
     setIsLoading(true)
     try {
-      const res = await apiFetch('/api/v1/users')
+      const res = await apiFetch('/api/v1/users?onboarding=true')
       if (res.ok) {
         const data = await res.json()
         // Filter users that are inactive (pending onboarding)
@@ -60,6 +60,22 @@ export default function OnboardingApprovalsPage() {
       setIsLoading(false)
     }
   }, [apiFetch])
+
+  const fetchUserDetails = async (userId: string) => {
+    const localUser = users.find(u => u.id === userId)
+    if (localUser) {
+      setSelectedUser(localUser)
+    }
+    try {
+      const res = await apiFetch(`/api/v1/users/${userId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSelectedUser(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch user details:', err)
+    }
+  }
 
   useEffect(() => {
     if (!authLoading && token) fetchPendingUsers()
@@ -206,7 +222,7 @@ export default function OnboardingApprovalsPage() {
                     {filtered.map(user => (
                       <tr
                         key={user.id}
-                        onClick={() => setSelectedUser(user)}
+                        onClick={() => fetchUserDetails(user.id)}
                         className={`hover:bg-slate-50/50 transition-colors cursor-pointer ${
                           selectedUser?.id === user.id ? 'bg-rose-50/40' : ''
                         }`}
@@ -241,7 +257,7 @@ export default function OnboardingApprovalsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              setSelectedUser(user)
+                              fetchUserDetails(user.id)
                             }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black shadow-sm"
                           >

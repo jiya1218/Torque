@@ -132,7 +132,7 @@ export default function OnboardingApprovalsScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await usersService.list({ limit: 100 });
+      const data = await usersService.list({ limit: 100, onboarding: true });
       // Filter pending/inactive users
       const pending = data.filter(u => !u.is_active);
       setItems(pending);
@@ -286,9 +286,15 @@ export default function OnboardingApprovalsScreen() {
         renderItem={({ item }) => (
           <Pressable
             style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
-            onPress={() => {
+            onPress={async () => {
               setSelectedUser(item);
               setDetailVisible(true);
+              try {
+                const detailed = await usersService.getById(item.id);
+                setSelectedUser(detailed);
+              } catch (err) {
+                console.error('[OnboardingApprovalsScreen] Failed to load detail', err);
+              }
             }}
           >
             <View style={styles.cardHeader}>

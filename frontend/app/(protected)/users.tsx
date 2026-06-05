@@ -1,16 +1,123 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, FlatList, Pressable, TextInput,
-  RefreshControl, Modal, ScrollView, Linking, Alert, ActivityIndicator
+  RefreshControl, Modal, ScrollView, Linking, Alert, ActivityIndicator, Platform
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { usersService, User, Document } from '../../src/services/users';
+import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
+
+interface DropdownProps {
+  label: string;
+  placeholder: string;
+  options: { label: string; value: string }[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  searchable?: boolean;
+  onOpen?: () => void;
+  loading?: boolean;
+}
+
+function DropdownSelector({ label, placeholder, options, selectedValue, onSelect, searchable = false, onOpen, loading = false }: DropdownProps) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const selectedOption = options.find(o => o.value === selectedValue);
+  
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  return (
+    <View style={styles.dropdownField}>
+      <Text style={styles.label}>{label.toUpperCase()}</Text>
+      <Pressable 
+        style={styles.dropdownTrigger} 
+        onPress={() => {
+          setSearchQuery('');
+          setModalVisible(true);
+          if (onOpen) onOpen();
+        }}
+      >
+        <Text style={[styles.dropdownTriggerText, !selectedOption && styles.placeholderText]}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : (
+          <Ionicons name="chevron-down" size={20} color={Colors.textMuted} />
+        )}
+      </Pressable>
+      
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.dropdownModalContent}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>{label}</Text>
+              <Pressable onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+            
+            {searchable && (
+              <View style={styles.dropdownSearchContainer}>
+                <Ionicons name="search" size={20} color={Colors.textLight} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.dropdownSearchInput}
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                  placeholderTextColor={Colors.textLight}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable onPress={() => setSearchQuery('')} style={styles.searchClearBtn}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textLight} />
+                  </Pressable>
+                )}
+              </View>
+            )}
+            
+            <ScrollView style={styles.optionsList} keyboardShouldPersistTaps="handled">
+              {filteredOptions.length === 0 ? (
+                <Text style={styles.noOptionsText}>No options found</Text>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = opt.value === selectedValue;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      style={[styles.optionItem, isSelected && styles.optionItemActive]}
+                      onPress={() => {
+                        onSelect(opt.value);
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                        {opt.label}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark" size={20} color={Colors.primary} />}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 export default function UsersScreen() {
   const router = useRouter();
@@ -39,6 +146,18 @@ export default function UsersScreen() {
   const [remarkVisible, setRemarkVisible] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
+  // Add User Modal states
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [roles, setRoles] = useState<any[]>(cache['/users/roles'] || []);
+  const [newUser, setNewUser] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    roleId: '',
+    managerId: ''
+  });
+
   const roleUpper = currentUser?.role?.toUpperCase();
   const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'HR';
 
@@ -62,10 +181,49 @@ export default function UsersScreen() {
         const updated = filtered.find(u => u.id === selectedUser.id);
         if (updated) setSelectedUser(updated);
       }
+
+      // Fetch roles
+      const rData = await api.get<any[]>('/roles').catch(() => []);
+      if (rData) {
+        setRoles(rData);
+        setCache('/users/roles', rData);
+      }
     } catch (e) {
       console.error('[UsersScreen] Failed to load users', e);
     }
   }, [search, isAdmin, selectedUser, setCache]);
+
+  const handleAddUser = async () => {
+    if (!newUser.fullName.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+      Alert.alert('Error', 'Name, Email, and Password are required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.post('/users/', {
+        fullName: newUser.fullName.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        password: newUser.password,
+        roleId: newUser.roleId || null,
+        managerId: newUser.managerId || null,
+        isActive: false // Force onboarding on first login by submitting isActive: false
+      });
+      setAddModalVisible(false);
+      setNewUser({
+        fullName: '',
+        email: '',
+        password: '',
+        roleId: '',
+        managerId: ''
+      });
+      Alert.alert('Success', 'User created successfully!');
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to create user');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   
@@ -176,7 +334,11 @@ export default function UsersScreen() {
           <Ionicons name="menu-outline" size={26} color={Colors.text} />
         </Pressable>
         <Text style={styles.title}>Users</Text>
-        <Text style={styles.count}>{total}</Text>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
+            <Ionicons name="add" size={22} color={Colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Search Row */}
@@ -499,6 +661,93 @@ export default function UsersScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Add User Modal ── */}
+      <Modal
+        visible={addModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAddModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create User Account</Text>
+              <Pressable onPress={() => setAddModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={styles.field}>
+                <Text style={styles.label}>FULL NAME *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. AMAN SHARMA"
+                  placeholderTextColor={Colors.textLight}
+                  value={newUser.fullName}
+                  onChangeText={(val) => setNewUser({ ...newUser, fullName: val })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>EMAIL ADDRESS *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="aman@example.com"
+                  placeholderTextColor={Colors.textLight}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={newUser.email}
+                  onChangeText={(val) => setNewUser({ ...newUser, email: val })}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>PASSWORD *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Minimum 6 characters"
+                  placeholderTextColor={Colors.textLight}
+                  secureTextEntry
+                  value={newUser.password}
+                  onChangeText={(val) => setNewUser({ ...newUser, password: val })}
+                />
+              </View>
+
+              <DropdownSelector
+                label="Role *"
+                placeholder="Choose role"
+                options={roles.map(r => ({ label: r.name, value: r.id }))}
+                selectedValue={newUser.roleId}
+                onSelect={(val) => setNewUser(prev => ({ ...prev, roleId: val }))}
+              />
+
+              {(roles.find(r => r.id === newUser.roleId)?.name?.toUpperCase().includes('EXECUTIVE') || 
+                roles.find(r => r.id === newUser.roleId)?.name?.toUpperCase().includes('SALES')) && (
+                <DropdownSelector
+                  label="Assign Manager *"
+                  placeholder="Choose manager"
+                  options={items.filter(u => {
+                    const rName = u.role?.name?.toUpperCase() || '';
+                    return rName === 'MANAGER' || rName === 'HR MANAGER';
+                  }).map(m => ({ label: `${m.full_name || m.fullName} (${m.role?.name || 'Manager'})`, value: m.id }))}
+                  selectedValue={newUser.managerId}
+                  onSelect={(val) => setNewUser(prev => ({ ...prev, managerId: val }))}
+                />
+              )}
+
+              <Pressable style={styles.submitBtn} onPress={handleAddUser} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>Create User</Text>
+                )}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -583,5 +832,35 @@ const styles = StyleSheet.create({
   remarkCancelText: { color: Colors.textMuted, fontWeight: '700', fontSize: FontSize.sm },
   remarkSendBtn: { flex: 1, height: 46, borderRadius: BorderRadius.md, backgroundColor: Colors.warning, justifyContent: 'center', alignItems: 'center' },
   remarkSendBtnDisabled: { opacity: 0.5 },
-  remarkSendText: { color: Colors.white, fontWeight: '700', fontSize: FontSize.sm }
+  remarkSendText: { color: Colors.white, fontWeight: '700', fontSize: FontSize.sm },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  addBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+
+  // Form field styles
+  field: { marginBottom: Spacing.md },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.xs },
+  input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
+  submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
+  submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+
+  // Dropdown selector styles
+  dropdownField: { marginBottom: Spacing.md },
+  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, marginTop: 4 },
+  dropdownTriggerText: { fontSize: FontSize.md, color: Colors.text, fontWeight: '500' },
+  placeholderText: { color: Colors.textLight },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  dropdownModalContent: { backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, maxHeight: '85%', paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
+  dropdownModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  dropdownModalTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
+  modalCloseBtn: { padding: Spacing.xs },
+  dropdownSearchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surfaceMuted || '#F1F5F9', borderRadius: BorderRadius.md, marginHorizontal: Spacing.lg, marginVertical: Spacing.sm, paddingHorizontal: Spacing.sm, height: 44 },
+  searchIcon: { marginRight: Spacing.xs },
+  dropdownSearchInput: { flex: 1, fontSize: FontSize.sm, color: Colors.text, height: '100%' },
+  searchClearBtn: { padding: Spacing.xs },
+  optionsList: { paddingHorizontal: Spacing.lg },
+  optionItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.surfaceMuted || '#F1F5F9' },
+  optionItemActive: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.sm },
+  optionText: { fontSize: FontSize.md, color: Colors.text },
+  optionTextActive: { color: Colors.primary, fontWeight: '600' },
+  noOptionsText: { textAlign: 'center', color: Colors.textLight, paddingVertical: Spacing.xl, fontSize: FontSize.sm },
 });

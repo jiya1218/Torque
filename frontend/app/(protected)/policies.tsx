@@ -7,6 +7,7 @@ import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src
 import { Ionicons } from '@expo/vector-icons';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
+import DatePickerSelector from '../../src/components/DatePickerSelector';
 
 interface DropdownProps {
   label: string;
@@ -181,7 +182,7 @@ export default function PoliciesScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleAddPolicy = async () => {
-    if (!newPolicy.policy_number.trim() || !newPolicy.provider.trim() || !newPolicy.type.trim() || !newPolicy.premium_amount || !newPolicy.start_date || !newPolicy.end_date) {
+    if (!newPolicy.policy_number.trim() || !newPolicy.provider.trim() || !newPolicy.type.trim() || !newPolicy.premium_amount || !newPolicy.start_date || !newPolicy.end_date || !newPolicy.lead_id) {
       Alert.alert('Error', 'All fields marked with * are required.');
       return;
     }
@@ -291,6 +292,18 @@ export default function PoliciesScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <DropdownSelector
+                label="Link to Lead *"
+                placeholder="Choose a lead to link"
+                options={leads.map(l => ({
+                  label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
+                  value: l.id
+                }))}
+                selectedValue={newPolicy.lead_id}
+                onSelect={(val) => setNewPolicy(prev => ({ ...prev, lead_id: val }))}
+                searchable
+              />
+
               <View style={styles.field}>
                 <Text style={styles.label}>POLICY NUMBER *</Text>
                 <TextInput
@@ -313,16 +326,18 @@ export default function PoliciesScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>TYPE *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Comprehensive, Third Party"
-                  placeholderTextColor={Colors.textLight}
-                  value={newPolicy.type}
-                  onChangeText={(val) => setNewPolicy({ ...newPolicy, type: val })}
-                />
-              </View>
+              <DropdownSelector
+                label="Policy Type *"
+                placeholder="Select Type"
+                options={[
+                  { label: "Comprehensive", value: "Comprehensive" },
+                  { label: "Third Party", value: "Third Party" },
+                  { label: "Zero Depreciation", value: "Zero Depreciation" },
+                  { label: "Own Damage Only", value: "Own Damage Only" }
+                ]}
+                selectedValue={newPolicy.type}
+                onSelect={(val) => setNewPolicy(prev => ({ ...prev, type: val }))}
+              />
 
               <View style={styles.field}>
                 <Text style={styles.label}>PREMIUM AMOUNT *</Text>
@@ -336,41 +351,18 @@ export default function PoliciesScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>START DATE * (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2026-06-04"
-                  placeholderTextColor={Colors.textLight}
-                  value={newPolicy.start_date}
-                  onChangeText={(val) => setNewPolicy({ ...newPolicy, start_date: val })}
-                />
-              </View>
+              <DatePickerSelector
+                label="Start Date *"
+                value={newPolicy.start_date}
+                onChange={(val) => setNewPolicy(prev => ({ ...prev, start_date: val }))}
+                placeholder="Select Start Date"
+              />
 
-              <View style={styles.field}>
-                <Text style={styles.label}>END DATE * (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2027-06-04"
-                  placeholderTextColor={Colors.textLight}
-                  value={newPolicy.end_date}
-                  onChangeText={(val) => setNewPolicy({ ...newPolicy, end_date: val })}
-                />
-              </View>
-
-              <DropdownSelector
-                label="Link to Lead (Optional)"
-                placeholder="Choose a lead to link"
-                options={[
-                  { label: "None / Direct Policy", value: "" },
-                  ...leads.map(l => ({
-                    label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
-                    value: l.id
-                  }))
-                ]}
-                selectedValue={newPolicy.lead_id}
-                onSelect={(val) => setNewPolicy(prev => ({ ...prev, lead_id: val }))}
-                searchable
+              <DatePickerSelector
+                label="End Date *"
+                value={newPolicy.end_date}
+                onChange={(val) => setNewPolicy(prev => ({ ...prev, end_date: val }))}
+                placeholder="Select End Date"
               />
 
               <Pressable style={styles.submitBtn} onPress={handleAddPolicy} disabled={saving}>

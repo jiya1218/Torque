@@ -72,7 +72,7 @@ export default function Sidebar({ visible, onClose }: SidebarProps) {
         { name: 'Roles & Permissions', icon: 'ribbon-outline', route: '/(protected)/roles' },
         { name: 'Data Approvals', icon: 'checkbox-outline', route: '/(protected)/data-approvals' },
         { name: 'Finance', icon: 'wallet-outline', route: '/(protected)/finance' },
-        { name: 'HR', icon: 'people-circle-outline', route: '/(protected)/hr' },
+        { name: 'HR/Employee management', icon: 'people-circle-outline', route: '/(protected)/hr' },
         { name: 'Lead Responses', icon: 'chatbubble-ellipses-outline', route: '/(protected)/responses' },
         { name: 'Settings', icon: 'settings-outline', route: '/(protected)/settings' },
       ]

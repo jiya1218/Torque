@@ -7,6 +7,7 @@ import { Colors, Spacing, FontSize, BorderRadius, StatusColors } from '../../src
 import { Ionicons } from '@expo/vector-icons';
 import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
+import DatePickerSelector from '../../src/components/DatePickerSelector';
 
 interface DropdownProps {
   label: string;
@@ -135,6 +136,13 @@ export default function RTOScreen() {
     leadId: ''
   });
 
+  // Edit RTO Status Modal states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedRto, setSelectedRto] = useState<any | null>(null);
+  const [editStatus, setEditStatus] = useState('');
+  const [editPaymentStatus, setEditPaymentStatus] = useState('');
+  const [updating, setUpdating] = useState(false);
+
   const [leads, setLeads] = useState<any[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
 
@@ -183,6 +191,10 @@ export default function RTOScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleAddRto = async () => {
+    if (!newRto.leadId) {
+      Alert.alert('Error', 'Lead selection is compulsory.');
+      return;
+    }
     if (!newRto.customerName.trim() || !newRto.workType.trim()) {
       Alert.alert('Error', 'Customer Name and Work Type are required.');
       return;
@@ -206,6 +218,25 @@ export default function RTOScreen() {
       Alert.alert('Error', e.message || 'Failed to create RTO work');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!selectedRto) return;
+    setUpdating(true);
+    try {
+      await api.patch('/workflow/rto', {
+        id: selectedRto.id,
+        status: editStatus,
+        paymentStatus: editPaymentStatus
+      });
+      setEditModalVisible(false);
+      Alert.alert('Success', 'RTO work updated successfully!');
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update RTO status');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -242,20 +273,32 @@ export default function RTOScreen() {
         }
         renderItem={({ item }) => {
           const sc = StatusColors[item.status] || StatusColors.pending;
+          const isPaid = item.paymentStatus?.toLowerCase() === 'paid';
           return (
-            <View style={styles.card}>
+            <Pressable
+              style={styles.card}
+              onPress={() => {
+                setSelectedRto(item);
+                setEditStatus(item.status);
+                setEditPaymentStatus(item.paymentStatus || 'Pending');
+                setEditModalVisible(true);
+              }}
+            >
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>{item.customerName || item.customer_name}</Text>
                   <Text style={styles.cardMeta}>{item.vehicleNumber || item.vehicle_number} · {(item.workType || item.work_type)?.replace(/_/g, ' ')}</Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status?.replace(/_/g, ' ')}</Text></View>
+                <View style={{ flexDirection: 'row', gap: Spacing.xs }}>
+                  <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status?.replace(/_/g, ' ')}</Text></View>
+                  <View style={[styles.badge, { backgroundColor: isPaid ? '#ECFDF5' : '#FEF2F2' }]}><Text style={[styles.badgeText, { color: isPaid ? '#047857' : '#B91C1C' }]}>{item.paymentStatus || 'Unpaid'}</Text></View>
+                </View>
               </View>
               <View style={styles.cardBottom}>
                 <Text style={styles.amount}>₹{(item.fees || 0).toLocaleString()}</Text>
                 <Text style={styles.cardDate}>{item.dueDate || item.due_date ? `Due: ${new Date(item.dueDate || item.due_date).toLocaleDateString()}` : ''}</Text>
               </View>
-            </View>
+            </Pressable>
           );
         }}
       />
@@ -277,39 +320,65 @@ export default function RTOScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <DropdownSelector
+                label="Select Lead *"
+                placeholder="Choose a lead"
+                options={leads.map(l => ({
+                  label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
+                  value: l.id
+                }))}
+                selectedValue={newRto.leadId}
+                onSelect={(val) => {
+                  const lead = leads.find(l => l.id === val);
+                  if (lead) {
+                    setNewRto(prev => ({
+                      ...prev,
+                      leadId: val,
+                      customerName: lead.clientName || '',
+                      vehicleNumber: lead.vehicleNo || ''
+                    }));
+                  }
+                }}
+                searchable
+                onOpen={fetchLeads}
+                loading={loadingLeads}
+              />
+
               <View style={styles.field}>
                 <Text style={styles.label}>CUSTOMER NAME *</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. MEHRA KARAN"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Customer name"
                   placeholderTextColor={Colors.textLight}
                   value={newRto.customerName}
-                  onChangeText={(val) => setNewRto({ ...newRto, customerName: val })}
+                  editable={false}
                 />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.label}>VEHICLE NUMBER</Text>
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g. GJ-01-XX-0000"
+                  style={[styles.input, { backgroundColor: '#F8FAFC' }]}
+                  placeholder="Vehicle number"
                   placeholderTextColor={Colors.textLight}
-                  autoCapitalize="characters"
                   value={newRto.vehicleNumber}
-                  onChangeText={(val) => setNewRto({ ...newRto, vehicleNumber: val })}
+                  editable={false}
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>WORK TYPE *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Tax Payment, Transfer, Renewal"
-                  placeholderTextColor={Colors.textLight}
-                  value={newRto.workType}
-                  onChangeText={(val) => setNewRto({ ...newRto, workType: val })}
-                />
-              </View>
+              <DropdownSelector
+                label="Work Type *"
+                placeholder="Select service type"
+                options={[
+                  { label: 'Ownership Transfer', value: 'Ownership Transfer' },
+                  { label: 'NOC Certificate', value: 'NOC Certificate' },
+                  { label: 'Address Change', value: 'Address Change' },
+                  { label: 'Duplicate RC', value: 'Duplicate RC' },
+                  { label: 'HP Adding/Removing', value: 'HP Adding/Removing' }
+                ]}
+                selectedValue={newRto.workType}
+                onSelect={(val) => setNewRto(prev => ({ ...prev, workType: val }))}
+              />
 
               <View style={styles.field}>
                 <Text style={styles.label}>RTO OFFICE</Text>
@@ -334,40 +403,11 @@ export default function RTOScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>DUE DATE (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 2026-06-30"
-                  placeholderTextColor={Colors.textLight}
-                  value={newRto.dueDate}
-                  onChangeText={(val) => setNewRto({ ...newRto, dueDate: val })}
-                />
-              </View>
-
-              <DropdownSelector
-                label="Link to Lead (Optional)"
-                placeholder="Choose a lead"
-                options={[
-                  { label: "None", value: "" },
-                  ...leads.map(l => ({
-                    label: `${l.clientName} (${l.vehicleNo || 'No vehicle'})`,
-                    value: l.id
-                  }))
-                ]}
-                selectedValue={newRto.leadId}
-                onSelect={(val) => {
-                  const lead = leads.find(l => l.id === val);
-                  setNewRto(prev => ({
-                    ...prev,
-                    leadId: val,
-                    customerName: lead ? lead.clientName : prev.customerName,
-                    vehicleNumber: lead ? (lead.vehicleNo || prev.vehicleNumber) : prev.vehicleNumber
-                  }));
-                }}
-                searchable
-                onOpen={fetchLeads}
-                loading={loadingLeads}
+              <DatePickerSelector
+                label="Due Date"
+                value={newRto.dueDate}
+                onChange={(val) => setNewRto(prev => ({ ...prev, dueDate: val }))}
+                placeholder="Select Due Date"
               />
 
               <Pressable style={styles.submitBtn} onPress={handleAddRto} disabled={saving}>
@@ -377,6 +417,69 @@ export default function RTOScreen() {
                   <Text style={styles.submitBtnText}>Create RTO Work</Text>
                 )}
               </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Edit Status Modal ── */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Status</Text>
+              <Pressable onPress={() => setEditModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {selectedRto && (
+                <>
+                  <View style={{ marginBottom: Spacing.lg }}>
+                    <Text style={{ fontSize: FontSize.md, fontWeight: '700', color: Colors.text }}>{selectedRto.customerName || selectedRto.customer_name}</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{selectedRto.vehicleNumber || selectedRto.vehicle_number} · {selectedRto.workType || selectedRto.work_type}</Text>
+                  </View>
+
+                  <DropdownSelector
+                    label="Work Status"
+                    placeholder="Select status"
+                    options={[
+                      { label: 'Pending', value: 'pending' },
+                      { label: 'In Progress', value: 'in_progress' },
+                      { label: 'Completed', value: 'completed' },
+                      { label: 'Cancelled', value: 'cancelled' }
+                    ]}
+                    selectedValue={editStatus}
+                    onSelect={(val) => setEditStatus(val)}
+                  />
+
+                  <DropdownSelector
+                    label="Payment Status"
+                    placeholder="Select payment status"
+                    options={[
+                      { label: 'Pending', value: 'Pending' },
+                      { label: 'Paid', value: 'Paid' },
+                      { label: 'Partially Paid', value: 'Partially Paid' }
+                    ]}
+                    selectedValue={editPaymentStatus}
+                    onSelect={(val) => setEditPaymentStatus(val)}
+                  />
+
+                  <Pressable style={styles.submitBtn} onPress={handleUpdateStatus} disabled={updating}>
+                    {updating ? (
+                      <ActivityIndicator color={Colors.white} />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Update Work Status</Text>
+                    )}
+                  </Pressable>
+                </>
+              )}
             </ScrollView>
           </View>
         </View>
