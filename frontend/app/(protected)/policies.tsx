@@ -169,7 +169,7 @@ export default function PoliciesScreen() {
       setCache('/policies', { items: policiesArr });
 
       if (lData) {
-        const leadsArr = Array.isArray(lData) ? lData : lData.items || [];
+        const leadsArr = Array.isArray(lData) ? lData : lData.leads || lData.items || [];
         setLeads(leadsArr);
         setCache('/leads', { items: leadsArr });
       }

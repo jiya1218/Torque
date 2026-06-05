@@ -292,8 +292,12 @@ export default function OnboardingApprovalsScreen() {
               try {
                 const detailed = await usersService.getById(item.id);
                 setSelectedUser(detailed);
-              } catch (err) {
+              } catch (err: any) {
                 console.error('[OnboardingApprovalsScreen] Failed to load detail', err);
+                Alert.alert(
+                  'Error Fetching Profile Details',
+                  `Could not load full profile or documents for ${item.full_name || 'user'}.\n\nDetails: ${err.message || String(err)}`
+                );
               }
             }}
           >

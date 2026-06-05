@@ -240,6 +240,14 @@ export default function RTOScreen() {
     }
   };
 
+  // Stats calculations
+  const pendingCount = items.filter(item => item.status?.toLowerCase() === 'pending').length;
+  const inProgressCount = items.filter(item => item.status?.toLowerCase() === 'in_progress' || item.status?.toLowerCase() === 'active').length;
+  const completedCount = items.filter(item => item.status?.toLowerCase() === 'completed').length;
+
+  const paymentPendingCount = items.filter(item => !item.paymentStatus || item.paymentStatus?.toLowerCase() === 'pending' || item.paymentStatus?.toLowerCase() === 'unpaid').length;
+  const paymentPaidCount = items.filter(item => item.paymentStatus?.toLowerCase() === 'paid').length;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Sidebar Component */}
@@ -256,6 +264,44 @@ export default function RTOScreen() {
           <Pressable style={styles.addBtn} onPress={() => setAddModalVisible(true)}>
             <Ionicons name="add" size={22} color={Colors.primary} />
           </Pressable>
+        </View>
+      </View>
+
+      {/* RTO Statistics */}
+      <View style={styles.statsSection}>
+        <View style={styles.statCard}>
+          <Text style={styles.statCardTitle}>WORK STATUS</Text>
+          <View style={styles.statRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: Colors.warning }]}>{pendingCount}</Text>
+              <Text style={styles.statLabel}>Pending</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: Colors.primary }]}>{inProgressCount}</Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: Colors.success }]}>{completedCount}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={styles.statCardTitle}>PAYMENT STATUS</Text>
+          <View style={styles.statRow}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: Colors.error }]}>{paymentPendingCount}</Text>
+              <Text style={styles.statLabel}>Unpaid</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: Colors.success }]}>{paymentPaidCount}</Text>
+              <Text style={styles.statLabel}>Paid</Text>
+            </View>
+          </View>
         </View>
       </View>
 
@@ -492,6 +538,54 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.md, backgroundColor: '#FFFFFF' },
   menuBtn: { padding: Spacing.xs },
+  statsSection: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+  },
+  statCardTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: Spacing.xs,
+    textAlign: 'center',
+  },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: FontSize.md,
+    fontWeight: '900',
+  },
+  statLabel: {
+    fontSize: 8,
+    color: Colors.textLight,
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: Colors.border,
+  },
   title: { flex: 1, fontSize: FontSize.xxl, fontWeight: '900', color: Colors.text },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   countBadge: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: BorderRadius.md, minWidth: 32, alignItems: 'center' },
