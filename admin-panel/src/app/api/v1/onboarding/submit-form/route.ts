@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Update user profile
+    // Update user profile (without documents)
     const user = await prisma.user.update({
       where: { id: context!.userId },
       data: {
@@ -47,17 +47,21 @@ export async function POST(req: NextRequest) {
         homeMobile,
         onboardingRemark: null,
         onboardingUpdated: hadRemark,
-        documents: documents?.length ? {
-          create: documents.map((doc: any) => ({
-            entityType: 'User',
-            entityId: context!.userId,
-            fileName: doc.type,
-            filePath: doc.url,
-            user: { connect: { id: context!.userId } }
-          }))
-        } : undefined
       }
     })
+
+    // Create documents separately to avoid Prisma relation conflicts
+    if (documents?.length) {
+      await prisma.document.createMany({
+        data: documents.map((doc: any) => ({
+          entityType: 'User',
+          entityId: context!.userId,
+          fileName: doc.type,
+          filePath: doc.url,
+          uploadedBy: context!.userId
+        }))
+      })
+    }
 
     // Archive webhook forwarding to Google Drive Apps Script
     const webhookUrl = process.env.GOOGLE_DRIVE_WEBHOOK_URL;
