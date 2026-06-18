@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
       documents // Array of { type: string, url: string }
     } = body
 
+    console.log(`[submit-form] User ${context!.userId} submitting with ${documents?.length || 0} documents`)
+
     // Check if the user previously had a revision remark from the admin
     const existingUser = await prisma.user.findUnique({
       where: { id: context!.userId },

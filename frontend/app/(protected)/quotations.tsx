@@ -10,15 +10,20 @@ import { useCacheStore } from '../../src/store/cacheStore';
 import Sidebar from '../../src/components/Sidebar';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function QuotationsScreen() {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const { cache, setCache, loadCache } = useCacheStore();
 
   const [items, setItems] = useState<Quotation[]>(cache['/quotations']?.items || []);
   const [total, setTotal] = useState(cache['/quotations']?.items?.length || 0);
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const roleUpper = currentUser?.role?.toUpperCase() || '';
+  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN';
 
   // Load cache on mount
   useEffect(() => {
@@ -109,25 +114,44 @@ export default function QuotationsScreen() {
         }
         renderItem={({ item }) => {
           const sc = StatusColors[item.status] || StatusColors.draft;
+          const leadIdVal = item.leadId ?? item.lead_id;
           return (
             <View style={styles.card}>
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName}>
-                    {item.details?.customer_name ?? item.details?.client_name ?? 'Quotation'}
+                    {item.lead?.clientName ?? item.details?.customer_name ?? item.details?.client_name ?? 'Quotation'}
                   </Text>
                   <Text style={styles.cardMeta}>
                     {item.details?.vehicle_type ?? ''}
                     {item.details?.vehicle_number ? ` · ${item.details.vehicle_number}` : ''}
                     {item.details?.insurance_type ? ` · ${item.details.insurance_type.replace(/_/g, ' ')}` : ''}
                   </Text>
+                  {(item.company?.name || item.details?.companyName) && (
+                    <Text style={styles.cardMetaBlue}>
+                      {item.company?.name || item.details?.companyName} · {item.category?.name || item.details?.categoryName || 'Insurance'}
+                    </Text>
+                  )}
                 </View>
                 <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status}</Text></View>
               </View>
               <View style={styles.cardBottom}>
-                <View><Text style={styles.lbl}>Amount</Text><Text style={styles.val}>₹{Number(item.amount || 0).toLocaleString()}</Text></View>
+                <View>
+                  <Text style={styles.lbl}>Rate</Text>
+                  <Text style={styles.val}>
+                    ₹{Number(item.rate !== undefined && item.rate !== null ? item.rate : (item.amount || 0)).toLocaleString()}
+                  </Text>
+                </View>
+                {item.benefit !== undefined && item.benefit !== null && (
+                  <View>
+                    <Text style={styles.lbl}>Benefit</Text>
+                    <Text style={[styles.val, { color: Colors.success }]}>
+                      ₹{Number(item.benefit).toLocaleString()}
+                    </Text>
+                  </View>
+                )}
                 <View><Text style={styles.lbl}>Status</Text><Text style={styles.val}>{item.status}</Text></View>
-                <View><Text style={styles.lbl}>Lead ID</Text><Text style={styles.val}>{item.lead_id ? item.lead_id.substring(0, 8) + '…' : '—'}</Text></View>
+                <View><Text style={styles.lbl}>Lead ID</Text><Text style={styles.val}>{leadIdVal ? leadIdVal.substring(0, 8) + '…' : '—'}</Text></View>
                 <View style={{ alignItems: 'center' }}>
                   <Text style={styles.lbl}>Download</Text>
                   <Pressable 
@@ -142,9 +166,11 @@ export default function QuotationsScreen() {
           );
         }}
       />
-      <Pressable testID="new-quotation-fab" style={styles.fab} onPress={() => router.push('/quotation-new')}>
-        <Ionicons name="add" size={28} color={Colors.white} />
-      </Pressable>
+      {isAdmin && (
+        <Pressable testID="new-quotation-fab" style={styles.fab} onPress={() => router.push('/quotation-new')}>
+          <Ionicons name="add" size={28} color={Colors.white} />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
@@ -161,6 +187,7 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardName: { fontSize: FontSize.lg - 2, fontWeight: '800', color: Colors.text },
   cardMeta: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2, textTransform: 'capitalize' },
+  cardMetaBlue: { fontSize: FontSize.xs - 1, fontWeight: '700', color: Colors.primary, marginTop: 4, textTransform: 'uppercase' },
   badge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm },
   badgeText: { fontSize: FontSize.xs, fontWeight: '700', textTransform: 'capitalize' },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', marginTop: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border },

@@ -14,6 +14,22 @@ export interface Quotation {
   details: Record<string, any> | null;
   created_at: string;
   updated_at: string;
+  rate?: number | null;
+  benefit?: number | null;
+  companyId?: string | null;
+  categoryId?: string | null;
+  netPremium?: number | null;
+  totalPremium?: number | null;
+  percentage?: number | null;
+  profit?: number | null;
+  company?: { name: string } | null;
+  category?: { name: string } | null;
+  creator?: { fullName: string } | null;
+  lead?: { clientName: string } | null;
+  leadId?: string | null;
+  createdBy?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface QuotationCreate {
@@ -21,6 +37,14 @@ export interface QuotationCreate {
   amount: number;
   status?: string;
   details?: Record<string, any>;
+  rate?: number;
+  benefit?: number;
+  companyId?: string;
+  categoryId?: string;
+  netPremium?: number;
+  totalPremium?: number;
+  percentage?: number;
+  profit?: number;
 }
 
 export interface QuotationUpdate {

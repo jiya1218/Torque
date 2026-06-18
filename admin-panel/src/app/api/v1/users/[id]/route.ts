@@ -34,8 +34,9 @@ export async function GET(
         entityId: id
       }
     })
-    const userObj = user as any
-    userObj.documents = userDocs
+    
+    // Clone to ensure modifications are serialized
+    const userObj = { ...user, documents: userDocs }
 
     return NextResponse.json(userObj)
   } catch (error) {

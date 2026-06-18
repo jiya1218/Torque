@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/context/AuthContext';
 
 interface DropdownProps {
   label: string;
@@ -114,13 +115,43 @@ function DropdownSelector({ label, placeholder, options, selectedValue, onSelect
 
 export default function QuotationNewScreen() {
   const router = useRouter();
-  const [form, setForm] = useState({ lead_id: '', customer_name: '', vehicle_type: 'Car', vehicle_number: '', insurance_type: 'comprehensive', premium_amount: '', idv: '', ncb: '0%', coverage_details: 'Comprehensive' });
+  const { user: currentUser } = useAuth();
+  const [form, setForm] = useState({ lead_id: '', customer_name: '', vehicle_type: 'Car', vehicle_number: '', insurance_type: 'comprehensive', idv: '', ncb: '0%', coverage_details: 'Comprehensive' });
   const [loading, setLoading] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
 
+  // Rate calculator lists
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+
+  // Calculator State
+  const [calcData, setCalcData] = useState({
+    companyId: '',
+    categoryId: '',
+    netPremium: '',
+    totalPremium: '',
+    percentage: 0,
+    profit: 0,
+    rate: '',
+    benefit: ''
+  });
+
+  const roleUpper = currentUser?.role?.toUpperCase() || '';
+  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN';
+
   const update = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
+  // Redirect non-admins back immediately
+  useEffect(() => {
+    if (currentUser && !isAdmin) {
+      Alert.alert('Access Denied', 'Only Admins and Super Admins can create quotations.');
+      router.back();
+    }
+  }, [currentUser, isAdmin]);
+
+  // Fetch Leads list
   useEffect(() => {
     const fetchLeads = async () => {
       setLoadingLeads(true);
@@ -136,24 +167,111 @@ export default function QuotationNewScreen() {
     fetchLeads();
   }, []);
 
+  // Fetch Companies & Categories lists
+  useEffect(() => {
+    const fetchConfig = async () => {
+      setLoadingConfig(true);
+      try {
+        const [compRes, catRes] = await Promise.all([
+          api.get('/rates/companies'),
+          api.get('/rates/categories')
+        ]);
+        setCompanies(compRes || []);
+        setCategories(catRes || []);
+      } catch (err) {
+        console.error('Failed to load companies/categories:', err);
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  // Lookup rule details
+  useEffect(() => {
+    const lookupRelation = async () => {
+      if (calcData.companyId && calcData.categoryId) {
+        try {
+          const res = await api.get(`/rates/relationships/lookup?companyId=${calcData.companyId}&categoryId=${calcData.categoryId}`);
+          setCalcData(prev => ({
+            ...prev,
+            percentage: res.qtr_percentage || 0,
+            profit: res.qtr_profit || 0
+          }));
+        } catch (err) {
+          console.error('Failed to lookup rate rules:', err);
+        }
+      } else {
+        setCalcData(prev => ({
+          ...prev,
+          percentage: 0,
+          profit: 0
+        }));
+      }
+    };
+    lookupRelation();
+  }, [calcData.companyId, calcData.categoryId]);
+
+  // Live calculator calculation logic matching the backend / PHP formulas
+  useEffect(() => {
+    const net = parseFloat(calcData.netPremium) || 0;
+    const total = parseFloat(calcData.totalPremium) || 0;
+    const pct = calcData.percentage || 0;
+    const prof = calcData.profit || 0;
+
+    if (pct > 0 && prof > 0 && net > 0 && total > 0) {
+      const computedRateVal = Math.round(total - (net * (pct / 100)) + prof);
+      const computedBenefit = Math.round(total - computedRateVal);
+      setCalcData(prev => ({
+        ...prev,
+        rate: String(computedRateVal),
+        benefit: String(computedBenefit)
+      }));
+    } else {
+      setCalcData(prev => ({
+        ...prev,
+        rate: '',
+        benefit: ''
+      }));
+    }
+  }, [calcData.netPremium, calcData.totalPremium, calcData.percentage, calcData.profit]);
+
   const submit = async () => {
     if (!form.lead_id) { Alert.alert('Error', 'Lead selection is compulsory'); return; }
-    if (!form.customer_name || !form.premium_amount) { Alert.alert('Error', 'Customer name and premium required'); return; }
+    if (!calcData.rate) { Alert.alert('Error', 'Incomplete calculator inputs or invalid rate configurations.'); return; }
     setLoading(true);
     try {
+      const selectedCompany = companies.find(c => c.id === calcData.companyId);
+      const selectedCategory = categories.find(c => c.id === calcData.categoryId);
+
       await api.post('/quotations/', {
-        amount: Number(form.premium_amount) || 0,
+        amount: Number(calcData.rate) || 0,
         status: 'Draft',
         leadId: form.lead_id,
+        rate: parseFloat(calcData.rate),
+        benefit: parseFloat(calcData.benefit),
+        companyId: calcData.companyId,
+        categoryId: calcData.categoryId,
+        netPremium: parseFloat(calcData.netPremium),
+        totalPremium: parseFloat(calcData.totalPremium),
+        percentage: calcData.percentage,
+        profit: calcData.profit,
         details: {
           customer_name: form.customer_name,
           vehicle_type: form.vehicle_type,
           vehicle_number: form.vehicle_number,
           insurance_type: form.insurance_type,
-          premium_amount: Number(form.premium_amount),
           idv: Number(form.idv),
           ncb: form.ncb,
           coverage_details: form.coverage_details,
+          companyName: selectedCompany?.name,
+          categoryName: selectedCategory?.name,
+          netPremium: parseFloat(calcData.netPremium),
+          totalPremium: parseFloat(calcData.totalPremium),
+          percentage: calcData.percentage,
+          profit: calcData.profit,
+          rate: parseFloat(calcData.rate),
+          benefit: parseFloat(calcData.benefit)
         },
       });
       router.back();
@@ -216,8 +334,79 @@ export default function QuotationNewScreen() {
             ))}
           </View>
           
-          <Text style={styles.label}>PREMIUM AMOUNT (₹) *</Text>
-          <TextInput testID="q-premium" style={styles.input} placeholder="e.g., 15000" placeholderTextColor={Colors.textLight} value={form.premium_amount} onChangeText={v => update('premium_amount', v)} keyboardType="numeric" />
+          {/* Company & Category Selectors */}
+          <DropdownSelector
+            label="Company *"
+            placeholder="Select Company"
+            options={companies.map(c => ({ label: c.name, value: c.id }))}
+            selectedValue={calcData.companyId}
+            onSelect={(val) => setCalcData(prev => ({ ...prev, companyId: val }))}
+            loading={loadingConfig}
+          />
+
+          <DropdownSelector
+            label="Category *"
+            placeholder="Select Category"
+            options={categories.map(c => ({ label: c.name, value: c.id }))}
+            selectedValue={calcData.categoryId}
+            onSelect={(val) => setCalcData(prev => ({ ...prev, categoryId: val }))}
+            loading={loadingConfig}
+          />
+
+          {calcData.companyId && calcData.categoryId && calcData.percentage === 0 && calcData.profit === 0 && (
+            <View style={styles.alertBox}>
+              <Ionicons name="alert-circle-outline" size={16} color="#B45309" />
+              <Text style={styles.alertText}>
+                No active rate rule configured for this Company + Category.
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.ruleContainer}>
+            <View style={styles.ruleCol}>
+              <Text style={styles.ruleLabel}>Percentage Rule</Text>
+              <Text style={styles.ruleVal}>{calcData.percentage}%</Text>
+            </View>
+            <View style={styles.ruleCol}>
+              <Text style={styles.ruleLabel}>Profit Rule</Text>
+              <Text style={styles.ruleVal}>₹{calcData.profit}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.label}>NET PREMIUM (₹) *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., 30000"
+            placeholderTextColor={Colors.textLight}
+            value={calcData.netPremium}
+            onChangeText={v => setCalcData(prev => ({ ...prev, netPremium: v }))}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.label}>TOTAL PREMIUM (₹) *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., 34000"
+            placeholderTextColor={Colors.textLight}
+            value={calcData.totalPremium}
+            onChangeText={v => setCalcData(prev => ({ ...prev, totalPremium: v }))}
+            keyboardType="numeric"
+          />
+
+          <View style={styles.calcResultContainer}>
+            <View style={styles.calcResultCol}>
+              <Text style={styles.calcResultLabel}>Computed Rate</Text>
+              <Text style={[styles.calcResultVal, styles.rateBg]}>
+                {calcData.rate ? `₹${Number(calcData.rate).toLocaleString()}` : '--'}
+              </Text>
+            </View>
+            <View style={styles.calcResultCol}>
+              <Text style={styles.calcResultLabel}>Agent Benefit</Text>
+              <Text style={[styles.calcResultVal, styles.benefitBg]}>
+                {calcData.benefit ? `₹${Number(calcData.benefit).toLocaleString()}` : '--'}
+              </Text>
+            </View>
+          </View>
           
           <Text style={styles.label}>IDV (₹)</Text>
           <TextInput style={styles.input} placeholder="Insured Declared Value" placeholderTextColor={Colors.textLight} value={form.idv} onChangeText={v => update('idv', v)} keyboardType="numeric" />
@@ -321,6 +510,80 @@ const styles = StyleSheet.create({
   },
   dropdownField: {
     marginBottom: Spacing.md,
+  },
+  alertBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FCD34D',
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginVertical: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  alertText: {
+    fontSize: FontSize.sm - 2,
+    fontWeight: '700',
+    color: '#B45309',
+    flex: 1,
+  },
+  ruleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginVertical: Spacing.sm,
+    gap: Spacing.md,
+  },
+  ruleCol: {
+    flex: 1,
+  },
+  ruleLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  ruleVal: {
+    fontSize: FontSize.md,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  calcResultContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#0F172A',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginVertical: Spacing.md,
+    gap: Spacing.md,
+  },
+  calcResultCol: {
+    flex: 1,
+  },
+  calcResultLabel: {
+    fontSize: FontSize.xs - 1,
+    color: '#94A3B8',
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  calcResultVal: {
+    fontSize: FontSize.md,
+    fontWeight: '900',
+    color: Colors.white,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    textAlign: 'center',
+    overflow: 'hidden',
+  },
+  rateBg: {
+    backgroundColor: '#10B981',
+  },
+  benefitBg: {
+    backgroundColor: '#002FA7',
   },
   dropdownTrigger: {
     flexDirection: 'row',

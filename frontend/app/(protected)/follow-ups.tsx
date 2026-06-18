@@ -518,13 +518,21 @@ export default function FollowUpsScreen() {
       const data = await api.get<any[]>(`/follow-ups?status=${filter}`);
       const arr = Array.isArray(data) ? data : [];
       setItems(arr);
-      setCache('/follow-ups', { items: arr });
+      setCache('/follow-ups', { items: arr, timestamp: Date.now() });
     } catch {
       console.error('[FollowUpsScreen] Failed to load follow-ups');
     }
   }, [filter, setCache]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      const cached = cache['/follow-ups'];
+      const lastFetched = cached?.timestamp;
+      if (!lastFetched || Date.now() - lastFetched > 30000) {
+        load();
+      }
+    }, [load, cache])
+  );
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleComplete = async (item: any) => {

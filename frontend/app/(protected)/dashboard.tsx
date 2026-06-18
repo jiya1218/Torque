@@ -76,13 +76,21 @@ export default function DashboardScreen() {
 
       setStats(newStats);
       setItems(newItems);
-      setCache('/dashboard/stats', { stats: newStats, items: newItems });
+      setCache('/dashboard/stats', { stats: newStats, items: newItems, timestamp: Date.now() });
     } catch (e) {
       console.warn('Dashboard load error:', e);
     }
   }, [setCache]);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+  useFocusEffect(
+    useCallback(() => {
+      const cached = cache['/dashboard/stats'];
+      const lastFetched = cached?.timestamp;
+      if (!lastFetched || Date.now() - lastFetched > 30000) {
+        loadData();
+      }
+    }, [loadData, cache])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -144,22 +152,22 @@ export default function DashboardScreen() {
         <View style={styles.statsGrid}>
           {isAdmin ? (
             <>
-              <StatCard icon="people"           value={stats.total_leads ?? 0}    label="Total Leads"   color="#3b82f6" />
-              <StatCard icon="people-circle"    value={stats.total_employees ?? 0} label="Total Staff"   color="#ec4899" />
-              <StatCard icon="shield-checkmark" value={stats.active_policies ?? 0} label="Active Policies" color="#10b981" />
-              <StatCard icon="document-text"    value={stats.active_claims ?? 0}   label="Active Claims"  color="#ef4444" />
-              <StatCard icon="car"              value={stats.pending_rto ?? 0}     label="Pending RTO"    color="#f59e0b" />
-              <StatCard icon="fitness"          value={stats.pending_fitness ?? 0} label="Pending Fitness" color="#06b6d4" />
-              <StatCard icon="cash"             value={stats.active_loans ?? 0}    label="Active Loans"   color="#84cc16" />
-              <StatCard icon="person-add"       value={stats.total_customers ?? 0} label="Customers"      color="#8b5cf6" />
-              <StatCard icon="location"         value={stats.today_visits ?? 0}    label="Today's Visits" color="#f43f5e" />
+              <StatCard icon="people"           value={stats.total_leads ?? 0}    label="Total Leads"   color="#3b82f6" onPress={() => router.push('/(protected)/leads')} />
+              <StatCard icon="people-circle"    value={stats.total_employees ?? 0} label="Total Staff"   color="#ec4899" onPress={() => router.push('/(protected)/users')} />
+              <StatCard icon="shield-checkmark" value={stats.active_policies ?? 0} label="Active Policies" color="#10b981" onPress={() => router.push('/(protected)/policies')} />
+              <StatCard icon="document-text"    value={stats.active_claims ?? 0}   label="Active Claims"  color="#ef4444" onPress={() => router.push('/(protected)/claims')} />
+              <StatCard icon="car"              value={stats.pending_rto ?? 0}     label="Pending RTO"    color="#f59e0b" onPress={() => router.push('/(protected)/rto')} />
+              <StatCard icon="fitness"          value={stats.pending_fitness ?? 0} label="Pending Fitness" color="#06b6d4" onPress={() => router.push('/(protected)/fitness')} />
+              <StatCard icon="cash"             value={stats.active_loans ?? 0}    label="Active Loans"   color="#84cc16" onPress={() => router.push('/(protected)/loans')} />
+              <StatCard icon="person-add"       value={stats.total_customers ?? 0} label="Customers"      color="#8b5cf6" onPress={() => router.push('/(protected)/users')} />
+              <StatCard icon="location"         value={stats.today_visits ?? 0}    label="Today's Visits" color="#f43f5e" onPress={() => router.push('/(protected)/visits')} />
             </>
           ) : (
             <>
-              <StatCard icon="people"           value={stats.leads}              label="Leads"   color="#3b82f6" />
+              <StatCard icon="people"           value={stats.leads}              label="Leads"   color="#3b82f6" onPress={() => router.push('/(protected)/leads')} />
               <StatCard icon="trending-up"      value={`₹${stats.revenue ?? 0}`} label="Revenue" color="#10b981" />
-              <StatCard icon="time"             value={stats.pending}            label="Pending" color="#f59e0b" />
-              <StatCard icon="shield-checkmark" value={stats.claims}             label="Claims"  color="#ef4444" />
+              <StatCard icon="time"             value={stats.pending}            label="Pending" color="#f59e0b" onPress={() => router.push('/(protected)/follow-ups')} />
+              <StatCard icon="shield-checkmark" value={stats.claims}             label="Claims"  color="#ef4444" onPress={() => router.push('/(protected)/claims')} />
             </>
           )}
         </View>
@@ -207,12 +215,33 @@ export default function DashboardScreen() {
   );
 }
 
-function StatCard({ icon, value, label, color }: any) {
-  return (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
+function StatCard({ icon, value, label, color, onPress }: any) {
+  const CardContent = (
+    <>
       <Ionicons name={icon} size={18} color={color} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable 
+        onPress={onPress} 
+        style={({ pressed }) => [
+          styles.statCard, 
+          { borderLeftColor: color },
+          { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }
+        ]}
+      >
+        {CardContent}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={[styles.statCard, { borderLeftColor: color }]}>
+      {CardContent}
     </View>
   );
 }

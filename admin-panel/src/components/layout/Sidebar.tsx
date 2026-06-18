@@ -44,6 +44,7 @@ const MENU_GROUPS = [
       { name: 'Finance', href: '/finance' },
       { name: 'HR', href: '/hr' },
       { name: 'Lead Responses', href: '/settings/responses' },
+      { name: 'Quotation Rates', href: '/settings/rates' },
       { name: 'Settings', href: '/settings' },
     ]
   }

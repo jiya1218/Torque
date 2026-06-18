@@ -32,13 +32,21 @@ export default function LeadsScreen() {
       const res = await api.get<any>('/leads');
       const leads = res.leads || [];
       setItems(leads);
-      setCache('/leads', { leads });
+      setCache('/leads', { leads, timestamp: Date.now() });
     } catch (e) {
       console.error('[LeadsScreen] Failed to load leads', e);
     }
   }, [setCache]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      const cached = cache['/leads'];
+      const lastFetched = cached?.timestamp;
+      if (!lastFetched || Date.now() - lastFetched > 30000) {
+        load();
+      }
+    }, [load, cache])
+  );
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleCall = (phone: string) => {

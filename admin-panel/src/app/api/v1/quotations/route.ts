@@ -11,13 +11,23 @@ export async function POST(req: NextRequest) {
     const role = context!.role
     const userId = context!.userId
 
+    const finalAmount = body.rate !== undefined ? body.rate : body.amount
+
     const quotation = await prisma.quotation.create({
       data: {
-        leadId: body.lead_id,
+        leadId: body.lead_id || body.leadId,
         createdBy: userId,
-        amount: body.amount,
+        amount: finalAmount,
         status: role === 'EXECUTIVE' ? 'Approval Pending' : (body.status || 'Draft'),
-        details: body.details || {}
+        details: body.details || {},
+        rate: body.rate !== undefined ? body.rate : null,
+        benefit: body.benefit !== undefined ? body.benefit : null,
+        companyId: body.companyId || null,
+        categoryId: body.categoryId || null,
+        netPremium: body.netPremium !== undefined ? body.netPremium : null,
+        totalPremium: body.totalPremium !== undefined ? body.totalPremium : null,
+        percentage: body.percentage !== undefined ? body.percentage : null,
+        profit: body.profit !== undefined ? body.profit : null
       }
     })
     return NextResponse.json(quotation)
@@ -55,7 +65,9 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         lead: { select: { clientName: true } },
-        creator: { select: { fullName: true } }
+        creator: { select: { fullName: true } },
+        company: { select: { name: true } },
+        category: { select: { name: true } }
       }
     })
 

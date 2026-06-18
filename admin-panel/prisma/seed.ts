@@ -40,8 +40,9 @@ const PERMISSIONS = [
   "template.view", "template.create", "template.edit", "template.delete",
   // 18. Admin Panel / System Config (2)
   "system.settings_manage", "system.audit_logs_view",
-  // 19. Missing Application Permissions (6)
-  "users.view", "users.create", "users.edit", "users.delete", "quotations.approve", "settings.manage"
+  // 19. Missing Application Permissions (10)
+  "users.view", "users.create", "users.edit", "users.delete", "quotations.approve", "settings.manage",
+  "policy.view", "policy.create", "policy.edit", "policy.delete"
 ]
 
 const ROLES = [
@@ -50,7 +51,7 @@ const ROLES = [
 ]
 
 async function main() {
-  console.log('🌱 Starting seed with 102 permissions...')
+  console.log('🌱 Starting seed with 106 permissions...')
 
   // 1. Create all permissions
   const permissionMap: Record<string, any> = {}
@@ -74,7 +75,7 @@ async function main() {
   // Role Permission Map — fine-grained per job role
   // ─────────────────────────────────────────────────────────
   const ROLE_PERMISSION_MAP: Record<string, string[]> = {
-    "Super Admin": PERMISSIONS, // All 102 permissions
+    "Super Admin": PERMISSIONS, // All 106 permissions
 
     "Admin": PERMISSIONS.filter(p => !p.startsWith("system.")), // All except system config
 
@@ -173,7 +174,8 @@ async function main() {
       "data.view", "data.create", "data.edit", "data.delete", "data.approve_changes", "data.manage_documents",
       "template.view", "template.create", "template.edit", "template.delete",
       "notification.view", "notification.send", "notification.manage", "notification.configure",
-      "system.settings_manage", "system.audit_logs_view", "quotations.approve", "settings.manage"
+      "system.settings_manage", "system.audit_logs_view", "quotations.approve", "settings.manage",
+      "policy.view", "policy.create", "policy.edit", "policy.delete"
     ],
 
     "Viewer": [

@@ -14,7 +14,21 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse payload
     const body = await req.json()
-    const { email } = body
+    const { 
+      email,
+      personalMobile,
+      homeMobile,
+      highestQualification,
+      dateOfBirth,
+      joiningDate,
+      // Supporting variations in key names
+      adhar, adhaar, aadhaar,
+      pan,
+      ssc, sscMarksheet,
+      qualification, qualificationDoc, qualificationCert,
+      leaving, schoolLeaving, leavingCert,
+      photo, passportPhoto
+    } = body
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
@@ -36,14 +50,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `User with email ${email} not found` }, { status: 404 })
     }
 
-    // 4. Update user profile to mark onboarding form as completed
+    // 4. Parse documents
+    const documentsToCreate: { fileName: string; filePath: string }[] = []
+    
+    const adharPath = adhar || adhaar || aadhaar
+    if (adharPath) documentsToCreate.push({ fileName: 'ADHAR', filePath: adharPath })
+    
+    const panPath = pan
+    if (panPath) documentsToCreate.push({ fileName: 'PAN', filePath: panPath })
+    
+    const sscPath = ssc || sscMarksheet
+    if (sscPath) documentsToCreate.push({ fileName: 'SSC', filePath: sscPath })
+    
+    const qualPath = qualification || qualificationDoc || qualificationCert
+    if (qualPath) documentsToCreate.push({ fileName: 'QUALIFICATION', filePath: qualPath })
+    
+    const leavingPath = leaving || schoolLeaving || leavingCert
+    if (leavingPath) documentsToCreate.push({ fileName: 'LEAVING', filePath: leavingPath })
+    
+    const photoPath = photo || passportPhoto
+    if (photoPath) documentsToCreate.push({ fileName: 'PHOTO', filePath: photoPath })
+
+    // 5. Update user profile and documents in database
+    if (documentsToCreate.length) {
+      await prisma.document.deleteMany({
+        where: {
+          entityType: 'User',
+          entityId: user.id
+        }
+      })
+    }
+
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        highestQualification: user.highestQualification || 'Submitted via Google Form',
-        dateOfBirth: user.dateOfBirth || new Date('2000-01-01'),
-        joiningDate: user.joiningDate || new Date(),
-        personalMobile: user.personalMobile || 'Submitted via Google Form',
+        highestQualification: highestQualification || user.highestQualification || 'Submitted via Google Form',
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : (user.dateOfBirth || new Date('2000-01-01')),
+        joiningDate: joiningDate ? new Date(joiningDate) : (user.joiningDate || new Date()),
+        personalMobile: personalMobile || user.personalMobile || 'Submitted via Google Form',
+        homeMobile: homeMobile || user.homeMobile || null,
+        documents: documentsToCreate.length ? {
+          create: documentsToCreate.map(d => ({
+            entityType: 'User',
+            entityId: user.id,
+            fileName: d.fileName,
+            filePath: d.filePath,
+            uploadedBy: user.id
+          }))
+        } : undefined
       }
     })
 

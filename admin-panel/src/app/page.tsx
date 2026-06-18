@@ -9,10 +9,13 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+// Global memory caches
+const statsCache: Record<string, any> = {}
+const teamCache: Record<string, any[]> = {}
+const cacheTimestamps: Record<string, number> = {}
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<any>(null)
-  const [team, setTeam] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const router = useRouter()
   const [isDeactivated, setIsDeactivated] = useState(false)
   
   // Date Range State
@@ -21,17 +24,34 @@ export default function DashboardPage() {
   })
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
 
+  const cacheKey = `${startDate}_${endDate}`
+  const [stats, setStats] = useState<any>(statsCache[cacheKey] || null)
+  const [team, setTeam] = useState<any[]>(teamCache[cacheKey] || [])
+  const [loading, setLoading] = useState(!statsCache[cacheKey])
+
+  // Sync state with cache when cacheKey changes
+  useEffect(() => {
+    setStats(statsCache[cacheKey] || null)
+    setTeam(teamCache[cacheKey] || [])
+    setLoading(!statsCache[cacheKey])
+  }, [cacheKey])
+
   const load = async () => {
-    setLoading(true)
+    if (!statsCache[cacheKey]) {
+      setLoading(true)
+    }
     setIsDeactivated(false)
     try {
       const params = new URLSearchParams({ startDate, endDate })
       const data = await fetchApi(`/api/v1/dashboard/stats?${params}`)
       setStats(data)
+      statsCache[cacheKey] = data
+      cacheTimestamps[cacheKey] = Date.now()
 
       if (data?.view === 'manager') {
         const teamData = await fetchApi('/api/v1/manager/team')
         setTeam(teamData)
+        teamCache[cacheKey] = teamData
       }
     } catch (err: any) {
       if (err.message?.includes('deactivated')) {
@@ -43,7 +63,12 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [startDate, endDate])
+  useEffect(() => {
+    const isExpired = !statsCache[cacheKey] || (Date.now() - (cacheTimestamps[cacheKey] || 0) > 30000)
+    if (isExpired) {
+      load()
+    }
+  }, [cacheKey])
 
   const downloadReport = () => {
     const params = new URLSearchParams({ type: 'summary', from: startDate, to: endDate })
@@ -138,11 +163,11 @@ export default function DashboardPage() {
               {/* Agent View */}
               {stats.view === 'agent' && (
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-                  <StatCard label="Leads Assigned" value={stats.my_leads} icon={Target} color="text-blue-600" bg="bg-blue-50" />
-                  <StatCard label="Fresh Today" value={stats.new_leads_today} icon={Plus} color="text-green-600" bg="bg-green-50" />
-                  <StatCard label="Pending Tasks" value={stats.pending_followups} icon={Clock} color="text-amber-600" bg="bg-amber-50" />
-                  <StatCard label="Call Activity" value={stats.calls_today} icon={Phone} color="text-purple-600" bg="bg-purple-50" />
-                  <StatCard label="My Quotes" value={stats.my_quotations} icon={FileText} color="text-indigo-600" bg="bg-indigo-50" />
+                  <StatCard label="Leads Assigned" value={stats.my_leads} icon={Target} color="text-blue-600" bg="bg-blue-50" onClick={() => router.push('/leads')} />
+                  <StatCard label="Fresh Today" value={stats.new_leads_today} icon={Plus} color="text-green-600" bg="bg-green-50" onClick={() => router.push('/leads')} />
+                  <StatCard label="Pending Tasks" value={stats.pending_followups} icon={Clock} color="text-amber-600" bg="bg-amber-50" onClick={() => router.push('/follow-ups')} />
+                  <StatCard label="Call Activity" value={stats.calls_today} icon={Phone} color="text-purple-600" bg="bg-purple-50" onClick={() => router.push('/crm')} />
+                  <StatCard label="My Quotes" value={stats.my_quotations} icon={FileText} color="text-indigo-600" bg="bg-indigo-50" onClick={() => router.push('/quotations')} />
                 </div>
               )}
 
@@ -150,10 +175,10 @@ export default function DashboardPage() {
               {stats.view === 'manager' && (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard label="Team Leads" value={stats.total_leads} icon={Users2} color="text-blue-600" bg="bg-blue-50" />
-                    <StatCard label="Conversions" value={stats.won_leads} icon={UserCheck} color="text-green-600" bg="bg-green-50" />
-                    <StatCard label="Open Followups" value={stats.pending_followups} icon={Clock} color="text-amber-600" bg="bg-amber-50" />
-                    <StatCard label="Overdue Items" value={stats.overdue_followups} icon={AlertCircle} color="text-red-600" bg="bg-red-50" />
+                    <StatCard label="Team Leads" value={stats.total_leads} icon={Users2} color="text-blue-600" bg="bg-blue-50" onClick={() => router.push('/leads')} />
+                    <StatCard label="Conversions" value={stats.won_leads} icon={UserCheck} color="text-green-600" bg="bg-green-50" onClick={() => router.push('/leads')} />
+                    <StatCard label="Open Followups" value={stats.pending_followups} icon={Clock} color="text-amber-600" bg="bg-amber-50" onClick={() => router.push('/follow-ups')} />
+                    <StatCard label="Overdue Items" value={stats.overdue_followups} icon={AlertCircle} color="text-red-600" bg="bg-red-50" onClick={() => router.push('/follow-ups')} />
                   </div>
                   {stats.pipeline?.length > 0 && <PipelineBar pipeline={stats.pipeline} />}
                   {team.length > 0 && <TeamList team={team} />}
@@ -164,16 +189,16 @@ export default function DashboardPage() {
               {stats.view === 'admin' && (
                 <>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard label="Leads Pipeline" value={stats.total_leads} icon={Target} color="text-blue-600" bg="bg-blue-50" />
-                    <StatCard label="New Arrivals" value={stats.new_leads_today} icon={Plus} color="text-green-600" bg="bg-green-50" />
-                    <StatCard label="Policies Active" value={stats.active_policies} icon={ShieldCheck} color="text-indigo-600" bg="bg-indigo-50" />
-                    <StatCard label="Total Staff" value={stats.total_employees} icon={Users2} color="text-violet-600" bg="bg-violet-50" />
+                    <StatCard label="Leads Pipeline" value={stats.total_leads} icon={Target} color="text-blue-600" bg="bg-blue-50" onClick={() => router.push('/leads')} />
+                    <StatCard label="New Arrivals" value={stats.new_leads_today} icon={Plus} color="text-green-600" bg="bg-green-50" onClick={() => router.push('/leads')} />
+                    <StatCard label="Policies Active" value={stats.active_policies} icon={ShieldCheck} color="text-indigo-600" bg="bg-indigo-50" onClick={() => router.push('/policies')} />
+                    <StatCard label="Total Staff" value={stats.total_employees} icon={Users2} color="text-violet-600" bg="bg-violet-50" onClick={() => router.push('/users')} />
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard label="Claims Filed" value={stats.active_claims} icon={Briefcase} color="text-red-600" bg="bg-red-50" />
-                    <StatCard label="Loans Processed" value={stats.active_loans} icon={BarChart2} color="text-cyan-600" bg="bg-cyan-50" />
-                    <StatCard label="RTO Tasks" value={stats.pending_rto} icon={Activity} color="text-orange-600" bg="bg-orange-50" />
-                    <StatCard label="Site Visits" value={stats.today_visits} icon={MapPin} color="text-teal-600" bg="bg-teal-50" />
+                    <StatCard label="Claims Filed" value={stats.active_claims} icon={Briefcase} color="text-red-600" bg="bg-red-50" onClick={() => router.push('/claims')} />
+                    <StatCard label="Loans Processed" value={stats.active_loans} icon={BarChart2} color="text-cyan-600" bg="bg-cyan-50" onClick={() => router.push('/loans')} />
+                    <StatCard label="RTO Tasks" value={stats.pending_rto} icon={Activity} color="text-orange-600" bg="bg-orange-50" onClick={() => router.push('/rto')} />
+                    <StatCard label="Site Visits" value={stats.today_visits} icon={MapPin} color="text-teal-600" bg="bg-teal-50" onClick={() => router.push('/crm')} />
                   </div>
                 </>
               )}
@@ -185,9 +210,14 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({ label, value, icon: Icon, color, bg }: any) {
+function StatCard({ label, value, icon: Icon, color, bg, onClick }: any) {
   return (
-    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 group">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-gray-100 shadow-sm transition-all duration-300 group ${
+        onClick ? 'cursor-pointer hover:shadow-xl hover:shadow-gray-100 hover:scale-[1.02] active:scale-[0.98]' : ''
+      }`}
+    >
       <div className={`w-10 h-10 md:w-12 md:h-12 ${bg} ${color} rounded-xl md:rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
         <Icon className="w-5 h-5 md:w-6 md:h-6" />
       </div>

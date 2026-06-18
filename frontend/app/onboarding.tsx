@@ -148,17 +148,10 @@ export default function OnboardingScreen() {
 
   const uploadFile = async (doc: OnboardingDoc): Promise<string | null> => {
     try {
-      const fileExt = doc.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${Date.now()}-${doc.type}.${fileExt}`;
-      const filePath = `onboarding/${fileName}`;
-
-      let contentType = 'application/octet-stream';
-      if (fileExt === 'pdf') {
-        contentType = 'application/pdf';
-      } else if (fileExt === 'jpg' || fileExt === 'jpeg') {
-        contentType = 'image/jpeg';
-      } else if (fileExt === 'png') {
-        contentType = 'image/png';
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        console.error('Upload Error: No auth token');
+        return null;
       }
 
       // Read file as Base64 using expo-file-system
@@ -166,24 +159,44 @@ export default function OnboardingScreen() {
         encoding: 'base64',
       });
 
-      // Convert Base64 to ArrayBuffer
-      const arrayBuffer = decodeBase64ToArrayBuffer(base64Str);
+      // Convert Base64 to Blob for FormData
+      const byteChars = atob(base64Str);
+      const byteNumbers = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteNumbers[i] = byteChars.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
 
-      // Upload directly to Supabase storage
-      const { error } = await supabase.storage
-        .from('documents')
-        .upload(filePath, arrayBuffer, {
-          contentType,
-          upsert: true
-        });
+      const fileExt = doc.name.split('.').pop()?.toLowerCase() || 'jpg';
+      let contentType = 'application/octet-stream';
+      if (fileExt === 'pdf') contentType = 'application/pdf';
+      else if (fileExt === 'jpg' || fileExt === 'jpeg') contentType = 'image/jpeg';
+      else if (fileExt === 'png') contentType = 'image/png';
 
-      if (error) throw error;
+      const blob = new Blob([byteArray], { type: contentType });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
+      const formData = new FormData();
+      formData.append('file', blob, `${doc.type}.${fileExt}`);
+      formData.append('docType', doc.type);
 
-      return publicUrl;
+      // Upload via server API (uses service role key, bypasses RLS)
+      const uploadUrl = `${BASE_URL}/api/v1/onboarding/upload`;
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('Upload Error:', errData.error || response.status);
+        return null;
+      }
+
+      const result = await response.json();
+      return result.url;
     } catch (error) {
       console.error('Upload Error:', error);
       return null;
@@ -207,15 +220,29 @@ export default function OnboardingScreen() {
 
       // 1. Upload all selected documents
       const uploadedDocs: { type: string, url: string }[] = [];
+      const failedDocs: string[] = [];
       const docEntries = Object.entries(docs);
+      const selectedCount = docEntries.filter(([, doc]) => doc !== null).length;
 
       for (const [key, doc] of docEntries) {
         if (doc) {
           const url = await uploadFile(doc);
           if (url) {
             uploadedDocs.push({ type: key.toUpperCase(), url });
+          } else {
+            failedDocs.push(key.toUpperCase());
           }
         }
+      }
+
+      // If some docs failed to upload, warn the user
+      if (failedDocs.length > 0) {
+        setLoading(false);
+        Alert.alert(
+          'Upload Failed',
+          `Failed to upload: ${failedDocs.join(', ')}. Please check your internet connection and try again.`
+        );
+        return;
       }
 
       // 2. Submit data to API
