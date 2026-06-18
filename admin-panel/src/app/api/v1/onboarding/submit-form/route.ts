@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
             entityId: context!.userId,
             fileName: doc.type,
             filePath: doc.url,
-            uploadedBy: context!.userId
+            user: { connect: { id: context!.userId } }
           }))
         } : undefined
       }
