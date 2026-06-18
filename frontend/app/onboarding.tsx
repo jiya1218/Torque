@@ -154,29 +154,21 @@ export default function OnboardingScreen() {
         return null;
       }
 
-      // Read file as Base64 using expo-file-system
-      const base64Str = await FileSystem.readAsStringAsync(doc.uri, {
-        encoding: 'base64',
-      });
-
-      // Convert Base64 to Blob for FormData
-      const byteChars = atob(base64Str);
-      const byteNumbers = new Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) {
-        byteNumbers[i] = byteChars.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-
       const fileExt = doc.name.split('.').pop()?.toLowerCase() || 'jpg';
       let contentType = 'application/octet-stream';
       if (fileExt === 'pdf') contentType = 'application/pdf';
       else if (fileExt === 'jpg' || fileExt === 'jpeg') contentType = 'image/jpeg';
       else if (fileExt === 'png') contentType = 'image/png';
+      else if (fileExt === 'webp') contentType = 'image/webp';
+      else if (fileExt === 'avif') contentType = 'image/avif';
 
-      const blob = new Blob([byteArray], { type: contentType });
-
+      // React Native FormData: pass file as {uri, name, type} object
       const formData = new FormData();
-      formData.append('file', blob, `${doc.type}.${fileExt}`);
+      formData.append('file', {
+        uri: doc.uri,
+        name: `${doc.type}.${fileExt}`,
+        type: contentType,
+      } as any);
       formData.append('docType', doc.type);
 
       // Upload via server API (uses service role key, bypasses RLS)
