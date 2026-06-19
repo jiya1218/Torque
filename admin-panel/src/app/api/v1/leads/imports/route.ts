@@ -9,10 +9,10 @@ export async function GET(req: NextRequest) {
   try {
     const imports = await prisma.lead.findMany({
       where: {
-        importName: {
-          not: null,
-          not: ''
-        }
+        AND: [
+          { importName: { not: null } },
+          { importName: { not: '' } }
+        ]
       },
       select: {
         importName: true

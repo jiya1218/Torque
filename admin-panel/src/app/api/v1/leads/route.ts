@@ -101,11 +101,22 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { error } = await validateAuth(req, 'leads.create')
+  const { error, context } = await validateAuth(req, 'leads.create')
   if (error) return error
 
   try {
     const body = await req.json()
+    const roleUpper = context?.role?.toUpperCase() || ''
+    const isExecutive = roleUpper.includes('EXECUTIVE') || roleUpper === 'VIEWER'
+
+    let status = body.status || 'New'
+    let assignedTo = body.assignedTo || body.assigned_to
+
+    if (isExecutive) {
+      status = 'Pending'
+      assignedTo = null // only admin will assign the lead
+    }
+
     const lead = await prisma.lead.create({
       data: {
         clientName: body.clientName || body.client_name,
@@ -113,8 +124,8 @@ export async function POST(req: NextRequest) {
         clientPhone: (body.clientPhone || body.client_phone) ? String(body.clientPhone || body.client_phone) : undefined,
         vehicleNo: body.vehicleNo || body.vehicle_no,
         gvw: body.gvw !== undefined ? String(body.gvw) : undefined,
-        status: body.status || 'New',
-        assignedTo: body.assignedTo || body.assigned_to
+        status,
+        assignedTo
       }
     })
     return NextResponse.json(lead)
