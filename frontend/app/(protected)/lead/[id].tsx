@@ -191,20 +191,23 @@ export default function LeadDetailScreen() {
     }
     setUpdatingLead(true);
     try {
-      await api.put(`/leads/${id}`, {
+      const res = await api.put(`/leads/${id}`, {
         clientName: editName.trim(),
         clientPhone: editPhone.trim() || null,
         clientEmail: editEmail.trim() || null,
         vehicleNo: editVehicleNo.trim() || null,
         gvw: editGvw.trim() || null,
-        existingAgent: editExistingAgent.trim() || null,
         city: editCity.trim() || null,
         address: editAddress.trim() || null,
         status: editStatus,
         assignedTo: editAssignedTo || null,
       });
       setEditModalVisible(false);
-      Alert.alert('Success', 'Lead updated successfully!');
+      if (res && res.pendingApproval) {
+        Alert.alert('Request Submitted', res.message || 'Changes submitted for Admin approval.');
+      } else {
+        Alert.alert('Success', 'Lead updated successfully!');
+      }
       loadData();
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update lead');
@@ -391,7 +394,7 @@ export default function LeadDetailScreen() {
               setEditStatus(lead.status || '');
               setEditAssignedTo(lead.assignedTo || '');
               setEditModalVisible(true);
-              if (isAdmin) fetchUsers();
+              fetchUsers();
             }}
           >
             <Ionicons name="create-outline" size={18} color={Colors.primary} />
@@ -637,16 +640,7 @@ export default function LeadDetailScreen() {
                 />
               </View>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>EXISTING AGENT</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Existing agent"
-                  placeholderTextColor={Colors.textLight}
-                  value={editExistingAgent}
-                  onChangeText={setEditExistingAgent}
-                />
-              </View>
+
 
               <View style={styles.field}>
                 <Text style={styles.label}>CITY</Text>
@@ -684,19 +678,17 @@ export default function LeadDetailScreen() {
                 onSelect={setEditStatus}
               />
 
-              {isAdmin && (
-                <DropdownSelector
-                  label="Assign To"
-                  placeholder="Choose assignee"
-                  options={[
-                    { label: 'Unassigned', value: '' },
-                    ...usersList.map(u => ({ label: `${u.fullName || u.full_name || u.email} (${u.role?.name || 'Staff'})`, value: u.id }))
-                  ]}
-                  selectedValue={editAssignedTo}
-                  onSelect={setEditAssignedTo}
-                  loading={loadingUsers}
-                />
-              )}
+              <DropdownSelector
+                label="Assign To"
+                placeholder="Choose assignee"
+                options={[
+                  { label: 'Unassigned', value: '' },
+                  ...usersList.map(u => ({ label: `${u.fullName || u.full_name || u.email} (${u.role?.name || 'Staff'})`, value: u.id }))
+                ]}
+                selectedValue={editAssignedTo}
+                onSelect={setEditAssignedTo}
+                loading={loadingUsers}
+              />
 
               <Pressable style={styles.submitBtn} onPress={handleUpdateLead} disabled={updatingLead}>
                 {updatingLead ? (

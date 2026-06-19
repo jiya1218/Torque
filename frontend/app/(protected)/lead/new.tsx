@@ -126,6 +126,7 @@ export default function NewLeadScreen() {
     company: '',
     vehicle_type: 'Car',
     vehicle_number: '',
+    gvw: '',
     insurance_type: 'Comprehensive',
     source: 'Direct',
     priority: 'medium',
@@ -176,6 +177,7 @@ export default function NewLeadScreen() {
         clientPhone: form.phone.trim(),
         clientEmail: form.email.trim() || undefined,
         vehicleNo: form.vehicle_number.trim() || undefined,
+        gvw: form.gvw.trim() || undefined,
         status: 'New',
         assignedTo: form.assignedTo || undefined,
       });
@@ -251,6 +253,15 @@ export default function NewLeadScreen() {
             value={form.vehicle_number}
             onChangeText={v => update('vehicle_number', v)}
             autoCapitalize="characters"
+          />
+
+          <Text style={styles.label}>GVW</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Gross Vehicle Weight (GVW)"
+            placeholderTextColor={Colors.textLight}
+            value={form.gvw}
+            onChangeText={v => update('gvw', v)}
           />
 
           <Text style={styles.label}>INSURANCE TYPE</Text>

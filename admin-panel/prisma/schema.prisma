@@ -94,6 +94,7 @@ model Lead {
   messageTemplate  String?
   existingAgent    String?
   city             String?
+  importName       String?
   calls            Call[]
   claims           Claim[]
   fitnessWork      FitnessWork[]
@@ -113,6 +114,7 @@ model Lead {
   @@index([assignedTo])
   @@index([clientPhone])
   @@index([clientEmail])
+  @@index([importName])
   @@map("leads")
 }
 

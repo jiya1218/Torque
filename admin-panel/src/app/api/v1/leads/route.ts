@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    const importName = searchParams.get('importName')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -17,6 +18,9 @@ export async function GET(req: NextRequest) {
     const toParam = searchParams.get('endDate') || searchParams.get('to')
     
     const where: any = {}
+    if (importName) {
+      where.importName = importName
+    }
     
     if (fromParam || toParam) {
       where.createdAt = {}
@@ -108,6 +112,7 @@ export async function POST(req: NextRequest) {
         clientEmail: body.clientEmail || body.client_email,
         clientPhone: (body.clientPhone || body.client_phone) ? String(body.clientPhone || body.client_phone) : undefined,
         vehicleNo: body.vehicleNo || body.vehicle_no,
+        gvw: body.gvw !== undefined ? String(body.gvw) : undefined,
         status: body.status || 'New',
         assignedTo: body.assignedTo || body.assigned_to
       }

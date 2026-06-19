@@ -11,12 +11,20 @@ export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || ''
     let rawData: any[] = []
+    let importName = ''
+    let mapping: any = null
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData()
       const file = formData.get('file') as File
       if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
       
+      importName = formData.get('importName') as string || ''
+      const mappingStr = formData.get('mapping') as string || ''
+      if (mappingStr) {
+        try { mapping = JSON.parse(mappingStr) } catch {}
+      }
+
       const fileName = file.name.toLowerCase()
       
       if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
@@ -33,6 +41,8 @@ export async function POST(req: NextRequest) {
     } else {
       const body = await req.json()
       rawData = Array.isArray(body.leads) ? body.leads : []
+      importName = body.importName || ''
+      mapping = body.mapping || null
     }
 
     if (rawData.length === 0) {
@@ -51,20 +61,35 @@ export async function POST(req: NextRequest) {
     const existingVehicles = new Set(existingLeads.map(l => l.vehicleNo).filter(Boolean))
 
     rawData.forEach((row, index) => {
-      // Normalize row keys to lowercase and remove spaces for fuzzy matching
-      const normalizedRow: any = {}
-      Object.keys(row).forEach(key => {
-        if (row[key] !== undefined && row[key] !== null) {
-          normalizedRow[key.toLowerCase().replace(/[\s\.\-_]/g, '')] = row[key]
-        }
-      })
+      let vehicleNo = ''
+      let ownerName = ''
+      let contactNo = ''
+      let email = null
+      let expiryDateStr = ''
+      let gvw = null
 
-      const vehicleNo = normalizedRow['vehiclenumber'] || normalizedRow['vehicleno'] || normalizedRow['vehicle'] || normalizedRow['vehicalnumber'] || normalizedRow['vehical'] || normalizedRow['regno'] || row['Vehicle No'] || row['vehicleNo'] || row['VEHICAL NUMBER']
-      const ownerName = normalizedRow['ownername'] || normalizedRow['name'] || normalizedRow['clientname'] || row['Owner Name'] || row['clientName'] || row['OWNER NAME']
-      const contactNo = normalizedRow['phonenumber'] || normalizedRow['contactnumber'] || normalizedRow['phone'] || normalizedRow['contact'] || row['Contact Number'] || row['clientPhone'] || row['PHONE NUMBER']
-      let expiryDateStr = normalizedRow['insuranceexpirydate'] || normalizedRow['expirydate'] || normalizedRow['expiry'] || row['Insurance Expiry Date'] || row['expiryDate']
-      
-      const email = normalizedRow['email'] || row['Email'] || row['clientEmail'] || row['EMAIL (OPTIONAL)'] || normalizedRow['emailoptional'] || normalizedRow['email(optional)']
+      if (mapping) {
+        vehicleNo = row[mapping.vehicleNo]
+        ownerName = row[mapping.clientName]
+        contactNo = row[mapping.clientPhone]
+        email = mapping.clientEmail ? row[mapping.clientEmail] : null
+        expiryDateStr = mapping.expiryDate ? row[mapping.expiryDate] : null
+        gvw = mapping.gvw ? row[mapping.gvw] : null
+      } else {
+        // Normalize row keys to lowercase and remove spaces for fuzzy matching
+        const normalizedRow: any = {}
+        Object.keys(row).forEach(key => {
+          if (row[key] !== undefined && row[key] !== null) {
+            normalizedRow[key.toLowerCase().replace(/[\s\.\-_]/g, '')] = row[key]
+          }
+        })
+
+        vehicleNo = normalizedRow['vehiclenumber'] || normalizedRow['vehicleno'] || normalizedRow['vehicle'] || normalizedRow['vehicalnumber'] || normalizedRow['vehical'] || normalizedRow['regno'] || row['Vehicle No'] || row['vehicleNo'] || row['VEHICAL NUMBER']
+        ownerName = normalizedRow['ownername'] || normalizedRow['name'] || normalizedRow['clientname'] || row['Owner Name'] || row['clientName'] || row['OWNER NAME']
+        contactNo = normalizedRow['phonenumber'] || normalizedRow['contactnumber'] || normalizedRow['phone'] || normalizedRow['contact'] || row['Contact Number'] || row['clientPhone'] || row['PHONE NUMBER']
+        expiryDateStr = normalizedRow['insuranceexpirydate'] || normalizedRow['expirydate'] || normalizedRow['expiry'] || row['Insurance Expiry Date'] || row['expiryDate']
+        email = normalizedRow['email'] || row['Email'] || row['clientEmail'] || row['EMAIL (OPTIONAL)'] || normalizedRow['emailoptional'] || normalizedRow['email(optional)']
+      }
 
       if (!vehicleNo || !ownerName || !contactNo) {
         errorRows.push({ 
@@ -101,6 +126,8 @@ export async function POST(req: NextRequest) {
         clientPhone: String(contactNo).trim(),
         clientEmail: email ? String(email).trim() : null,
         expiryDate: expiryDate,
+        gvw: gvw ? String(gvw).trim() : null,
+        importName: importName ? importName.trim() : null,
         status: 'New'
       })
     })
@@ -185,6 +212,19 @@ export async function POST(req: NextRequest) {
       skipDuplicates: true
     })
 
+    // Fetch all user names to map assigned ids
+    const allUsers = await prisma.user.findMany({
+      select: { id: true, fullName: true, email: true }
+    })
+    const userMap = new Map(allUsers.map(u => [u.id, u.fullName || u.email]))
+
+    const importedLeads = leadsWithAssignment.map(l => ({
+      clientName: l.clientName,
+      vehicleNo: l.vehicleNo,
+      clientPhone: l.clientPhone,
+      assignedToName: userMap.get(l.assignedTo) || 'Unassigned'
+    }))
+
     return NextResponse.json({
       success: true,
       stats: {
@@ -194,6 +234,7 @@ export async function POST(req: NextRequest) {
         errors: errorRows.length,
         assignedCount: result.count
       },
+      importedLeads,
       errorDetails: errorRows.slice(0, 10)
     })
 

@@ -339,9 +339,15 @@ export default function RTOScreen() {
                   <Text style={styles.cardName}>{item.customerName || item.customer_name}</Text>
                   <Text style={styles.cardMeta}>{item.vehicleNumber || item.vehicle_number} · {(item.workType || item.work_type)?.replace(/_/g, ' ')}</Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: Spacing.xs }}>
-                  <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status?.replace(/_/g, ' ')}</Text></View>
-                  <View style={[styles.badge, { backgroundColor: isPaid ? '#ECFDF5' : '#FEF2F2' }]}><Text style={[styles.badgeText, { color: isPaid ? '#047857' : '#B91C1C' }]}>{item.paymentStatus || 'Unpaid'}</Text></View>
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 9, color: Colors.textMuted, fontWeight: '600' }}>Work:</Text>
+                    <View style={[styles.badge, { backgroundColor: sc.bg }]}><Text style={[styles.badgeText, { color: sc.text }]}>{item.status?.replace(/_/g, ' ')}</Text></View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 9, color: Colors.textMuted, fontWeight: '600' }}>Pay:</Text>
+                    <View style={[styles.badge, { backgroundColor: isPaid ? '#ECFDF5' : '#FEF2F2' }]}><Text style={[styles.badgeText, { color: isPaid ? '#047857' : '#B91C1C' }]}>{item.paymentStatus || 'Unpaid'}</Text></View>
+                  </View>
                 </View>
               </View>
               <View style={styles.cardBottom}>

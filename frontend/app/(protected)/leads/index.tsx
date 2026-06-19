@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput, RefreshControl, Linking, Platform, StatusBar, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../../src/utils/api';
@@ -17,37 +17,59 @@ export default function LeadsScreen() {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const [importNames, setImportNames] = useState<string[]>([]);
+  const [selectedImportName, setSelectedImportName] = useState('');
+
+  const fetchImports = async () => {
+    try {
+      const list = await api.get<string[]>('/leads/imports');
+      setImportNames(list || []);
+    } catch (err) {
+      console.warn('Failed to load import sheet names', err);
+    }
+  };
 
   React.useEffect(() => {
     loadCache().then(() => {
-      const cached = cache['/leads'];
+      const query = selectedImportName ? `?importName=${encodeURIComponent(selectedImportName)}` : '';
+      const cached = cache[`/leads${query}`] || cache['/leads'];
       if (cached && cached.leads) {
         setItems(cached.leads);
       }
     });
+    fetchImports();
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (importNameFilter = selectedImportName) => {
     try {
-      const res = await api.get<any>('/leads');
+      const query = importNameFilter ? `?importName=${encodeURIComponent(importNameFilter)}` : '';
+      const res = await api.get<any>(`/leads${query}`);
       const leads = res.leads || [];
       setItems(leads);
-      setCache('/leads', { leads, timestamp: Date.now() });
+      setCache(`/leads${query}`, { leads, timestamp: Date.now() });
     } catch (e) {
       console.error('[LeadsScreen] Failed to load leads', e);
     }
-  }, [setCache]);
+  }, [setCache, selectedImportName]);
 
   useFocusEffect(
     useCallback(() => {
-      const cached = cache['/leads'];
+      const query = selectedImportName ? `?importName=${encodeURIComponent(selectedImportName)}` : '';
+      const cached = cache[`/leads${query}`];
       const lastFetched = cached?.timestamp;
       if (!lastFetched || Date.now() - lastFetched > 30000) {
-        load();
+        load(selectedImportName);
       }
-    }, [load, cache])
+      fetchImports();
+    }, [load, cache, selectedImportName])
   );
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  const onRefresh = async () => { setRefreshing(true); await load(selectedImportName); setRefreshing(false); };
+
+  const handleSelectImport = (name: string) => {
+    setSelectedImportName(name);
+    load(name);
+  };
 
   const handleCall = (phone: string) => {
     if (phone) Linking.openURL(`tel:${phone}`);
@@ -135,6 +157,30 @@ export default function LeadsScreen() {
           <Text style={styles.countText}>{filteredItems.length}</Text>
         </View>
       </View>
+
+      {/* Sheet Filter Bar */}
+      {importNames.length > 0 && (
+        <View style={styles.filterBar}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            <Pressable 
+              style={[styles.filterChip, selectedImportName === '' && styles.filterChipActive]}
+              onPress={() => handleSelectImport('')}
+            >
+              <Text style={[styles.filterChipText, selectedImportName === '' && styles.filterChipTextActive]}>All Sheets</Text>
+            </Pressable>
+            {importNames.map(name => (
+              <Pressable
+                key={name}
+                style={[styles.filterChip, selectedImportName === name && styles.filterChipActive]}
+                onPress={() => handleSelectImport(name)}
+              >
+                <Ionicons name="document-text-outline" size={12} color={selectedImportName === name ? '#FFFFFF' : Colors.textMuted} style={{ marginRight: 4 }} />
+                <Text style={[styles.filterChipText, selectedImportName === name && styles.filterChipTextActive]} numberOfLines={1}>{name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* List */}
       <FlatList
@@ -263,4 +309,38 @@ const styles = StyleSheet.create({
   empty:      { alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
   emptyText:  { fontSize: FontSize.sm, color: Colors.textMuted },
+  filterBar: {
+    paddingVertical: Spacing.xs,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  filterScroll: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.xs,
+    alignItems: 'center',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
 });

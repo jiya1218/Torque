@@ -99,3 +99,4 @@ torque all details/
 # One-off admin scripts — never commit these
 scratch/
 **/scratch/
+vehiclebk/
