@@ -4,6 +4,33 @@ import { validateAuth } from '@/lib/auth-guard'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
 
+function getRowValueByHeader(row: any, mappedHeader: string | undefined | null): any {
+  if (!row || !mappedHeader) return null;
+
+  // 1. Try exact match first
+  if (row[mappedHeader] !== undefined && row[mappedHeader] !== null) {
+    return row[mappedHeader];
+  }
+
+  // 2. Try trimmed match
+  const trimmedHeader = String(mappedHeader).trim();
+  if (row[trimmedHeader] !== undefined && row[trimmedHeader] !== null) {
+    return row[trimmedHeader];
+  }
+
+  // 3. Try normalized fuzzy match (remove spaces, dots, dashes, underscores and lowercase)
+  const normMapped = trimmedHeader.toLowerCase().replace(/[\s\.\-_]/g, '');
+  const rowKeys = Object.keys(row);
+  for (const key of rowKeys) {
+    const normKey = key.toLowerCase().replace(/[\s\.\-_]/g, '');
+    if (normKey === normMapped) {
+      return row[key];
+    }
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const { error, context } = await validateAuth(req, 'leads.import')
   if (error) return error
@@ -50,6 +77,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Data Validation & Sanitization
+    console.log('[import-leads] Mapping received:', mapping);
+    if (rawData.length > 0) {
+      console.log('[import-leads] Sample row keys:', Object.keys(rawData[0]));
+      console.log('[import-leads] Sample row values:', rawData[0]);
+    }
+
+    // 1. Data Validation & Sanitization
     const validLeads: any[] = []
     const errorRows: any[] = []
     const vehicleNumbers = new Set<string>()
@@ -69,12 +103,12 @@ export async function POST(req: NextRequest) {
       let gvw = null
 
       if (mapping) {
-        vehicleNo = row[mapping.vehicleNo]
-        ownerName = row[mapping.clientName]
-        contactNo = row[mapping.clientPhone]
-        email = mapping.clientEmail ? row[mapping.clientEmail] : null
-        expiryDateStr = mapping.expiryDate ? row[mapping.expiryDate] : null
-        gvw = mapping.gvw ? row[mapping.gvw] : null
+        vehicleNo = getRowValueByHeader(row, mapping.vehicleNo)
+        ownerName = getRowValueByHeader(row, mapping.clientName)
+        contactNo = getRowValueByHeader(row, mapping.clientPhone)
+        email = getRowValueByHeader(row, mapping.clientEmail)
+        expiryDateStr = getRowValueByHeader(row, mapping.expiryDate)
+        gvw = getRowValueByHeader(row, mapping.gvw)
       } else {
         // Normalize row keys to lowercase and remove spaces for fuzzy matching
         const normalizedRow: any = {}
@@ -91,16 +125,20 @@ export async function POST(req: NextRequest) {
         email = normalizedRow['email'] || row['Email'] || row['clientEmail'] || row['EMAIL (OPTIONAL)'] || normalizedRow['emailoptional'] || normalizedRow['email(optional)']
       }
 
-      if (!vehicleNo || !ownerName || !contactNo) {
+      const cleanVehicleNo = vehicleNo !== undefined && vehicleNo !== null ? String(vehicleNo).trim() : '';
+      const cleanOwnerName = ownerName !== undefined && ownerName !== null ? String(ownerName).trim() : '';
+      const cleanContactNo = contactNo !== undefined && contactNo !== null ? String(contactNo).trim() : '';
+
+      if (!cleanVehicleNo || !cleanOwnerName || !cleanContactNo) {
         errorRows.push({ 
           row: index + 1, 
-          error: `Missing fields: ${!vehicleNo ? 'Vehicle No, ' : ''}${!ownerName ? 'Name, ' : ''}${!contactNo ? 'Phone' : ''}`,
+          error: `Missing fields: ${!cleanVehicleNo ? 'Vehicle No, ' : ''}${!cleanOwnerName ? 'Name, ' : ''}${!cleanContactNo ? 'Phone' : ''}`,
           data: row 
         })
         return
       }
 
-      const vNo = String(vehicleNo).trim().toUpperCase()
+      const vNo = cleanVehicleNo.toUpperCase()
 
       if (vehicleNumbers.has(vNo) || existingVehicles.has(vNo)) {
         errorRows.push({ row: index + 1, error: `Duplicate Vehicle No in file or system: ${vNo}` })
