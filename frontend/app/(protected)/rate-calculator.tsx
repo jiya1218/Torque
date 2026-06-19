@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, StatusBar, Alert, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/utils/api';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/utils/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -114,6 +115,10 @@ function DropdownSelector({ label, placeholder, options, selectedValue, onSelect
 
 export default function RateCalculatorScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const roleUpper = user?.role?.toUpperCase() || '';
+  const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN';
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [companies, setCompanies] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -199,6 +204,35 @@ export default function RateCalculatorScreen() {
       }));
     }
   }, [calcData.netPremium, calcData.totalPremium, calcData.percentage, calcData.profit]);
+
+  if (user && !isAdmin) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <View style={styles.header}>
+          <Pressable onPress={() => setSidebarOpen(true)} style={styles.menuBtn}>
+            <Ionicons name="menu-outline" size={26} color={Colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Rate Calculator</Text>
+          <View style={{ width: 38 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Ionicons name="lock-closed-outline" size={64} color={Colors.error} style={{ marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 8 }}>Access Denied</Text>
+          <Text style={{ fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginBottom: 24 }}>
+            Only administrators are authorized to access the Rate Calculator.
+          </Text>
+          <Pressable 
+            style={{ backgroundColor: Colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }} 
+            onPress={() => router.replace('/(protected)/dashboard')}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Go to Dashboard</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
