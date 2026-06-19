@@ -144,6 +144,31 @@ export default function HRScreen() {
     homeMobile: ''
   });
 
+  // Edit Employee Modal states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    email: '',
+    roleId: '',
+    managerId: '',
+    personalMobile: '',
+    homeMobile: '',
+    highestQualification: '',
+    isActive: true,
+  });
+
+  // Leave modal states
+  const [leaveModalVisible, setLeaveModalVisible] = useState(false);
+  const [leaveSaving, setLeaveSaving] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    startDate: '',
+    endDate: '',
+    reason: '',
+    type: 'casual',
+  });
+
   const roleUpper = user?.role?.toUpperCase();
   const isAdmin = roleUpper === 'SUPER ADMIN' || roleUpper === 'ADMIN' || roleUpper === 'MANAGER';
 
@@ -244,6 +269,77 @@ export default function HRScreen() {
     }
   };
 
+  const openEditModal = (emp: any) => {
+    setSelectedEmployee(emp);
+    setEditForm({
+      fullName: emp.fullName || emp.name || '',
+      email: emp.email || '',
+      roleId: emp.role?.id || emp.roleId || '',
+      managerId: emp.managerId || '',
+      personalMobile: emp.personalMobile || '',
+      homeMobile: emp.homeMobile || '',
+      highestQualification: emp.highestQualification || '',
+      isActive: emp.isActive ?? true,
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleEditEmployee = async () => {
+    if (!selectedEmployee) return;
+    setEditSaving(true);
+    try {
+      await api.patch(`/users/${selectedEmployee.id}`, {
+        fullName: editForm.fullName.trim(),
+        email: editForm.email.trim().toLowerCase(),
+        roleId: editForm.roleId || null,
+        managerId: editForm.managerId || null,
+        personalMobile: editForm.personalMobile.trim() || null,
+        homeMobile: editForm.homeMobile.trim() || null,
+        highestQualification: editForm.highestQualification.trim() || null,
+        isActive: editForm.isActive,
+      });
+      setEditModalVisible(false);
+      Alert.alert('Success', 'Employee updated!');
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update employee');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const openLeaveModal = (emp: any) => {
+    setSelectedEmployee(emp);
+    const today = new Date().toISOString().split('T')[0];
+    setLeaveForm({ startDate: today, endDate: today, reason: '', type: 'casual' });
+    setLeaveModalVisible(true);
+  };
+
+  const handleMarkLeave = async () => {
+    if (!selectedEmployee || !leaveForm.startDate || !leaveForm.endDate) {
+      Alert.alert('Error', 'Start and end date are required.');
+      return;
+    }
+    setLeaveSaving(true);
+    try {
+      await api.post('/hr/leaves', {
+        userId: selectedEmployee.id,
+        startDate: new Date(leaveForm.startDate).toISOString(),
+        endDate: new Date(leaveForm.endDate).toISOString(),
+        reason: leaveForm.reason.trim() || 'Leave marked by admin',
+        type: leaveForm.type,
+        status: 'approved',
+      });
+      setLeaveModalVisible(false);
+      Alert.alert('Success', `Leave marked for ${selectedEmployee.fullName || selectedEmployee.name}`);
+      load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to mark leave');
+    } finally {
+      setLeaveSaving(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
@@ -311,9 +407,11 @@ export default function HRScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const sc = item.isActive ? StatusColors.active : StatusColors.inactive || StatusColors.pending;
           return (
-            <View style={styles.card}>
+            <Pressable 
+              style={({ pressed }) => [styles.card, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+              onPress={() => openEditModal(item)}
+            >
               <View style={styles.cardRow}>
                 <View style={styles.avatar}><Text style={styles.avatarText}>{(item.fullName || item.name || '?').charAt(0)}</Text></View>
                 <View style={{ flex: 1 }}>
@@ -321,15 +419,16 @@ export default function HRScreen() {
                   <Text style={styles.cardMeta}>{item.role?.name || item.role || 'No Role'} · {item.highestQualification || 'Qualification N/A'}</Text>
                   <Text style={styles.cardMeta}>{item.email} · {item.personalMobile || item.phone || 'No Phone'}</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
+                <View style={{ alignItems: 'flex-end', gap: 6 }}>
                   <View style={[styles.badge, { backgroundColor: item.isActive ? '#ECFDF5' : '#FEF2F2' }]}>
                     <Text style={[styles.badgeText, { color: item.isActive ? '#047857' : '#B91C1C' }]}>
                       {item.isActive ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textLight} />
                 </View>
               </View>
-            </View>
+            </Pressable>
           );
         }}
       />
@@ -450,6 +549,216 @@ export default function HRScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Edit Employee Modal ── */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Employee</Text>
+              <Pressable onPress={() => setEditModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={styles.field}>
+                <Text style={styles.label}>FULL NAME</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full name"
+                  placeholderTextColor={Colors.textLight}
+                  value={editForm.fullName}
+                  onChangeText={(val) => setEditForm(p => ({ ...p, fullName: val }))}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>EMAIL</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor={Colors.textLight}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={editForm.email}
+                  onChangeText={(val) => setEditForm(p => ({ ...p, email: val }))}
+                />
+              </View>
+
+              <DropdownSelector
+                label="Role"
+                placeholder="Choose role"
+                options={roles.map(r => ({ label: r.name, value: r.id }))}
+                selectedValue={editForm.roleId}
+                onSelect={(val) => setEditForm(p => ({ ...p, roleId: val }))}
+              />
+
+              <DropdownSelector
+                label="Manager"
+                placeholder="Choose manager"
+                searchable
+                options={[
+                  { label: 'None', value: '' },
+                  ...items.filter(u => {
+                    const rName = u.role?.name?.toUpperCase() || '';
+                    return rName === 'MANAGER' || rName === 'HR MANAGER' || rName === 'ADMIN' || rName === 'SUPER ADMIN';
+                  }).map(m => ({ label: `${m.fullName} (${m.role?.name || 'Manager'})`, value: m.id }))
+                ]}
+                selectedValue={editForm.managerId}
+                onSelect={(val) => setEditForm(p => ({ ...p, managerId: val }))}
+              />
+
+              <View style={styles.field}>
+                <Text style={styles.label}>PERSONAL MOBILE</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="10-digit number"
+                  placeholderTextColor={Colors.textLight}
+                  keyboardType="phone-pad"
+                  value={editForm.personalMobile}
+                  onChangeText={(val) => setEditForm(p => ({ ...p, personalMobile: val }))}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>HOME MOBILE</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Home number"
+                  placeholderTextColor={Colors.textLight}
+                  keyboardType="phone-pad"
+                  value={editForm.homeMobile}
+                  onChangeText={(val) => setEditForm(p => ({ ...p, homeMobile: val }))}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>HIGHEST QUALIFICATION</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. MBA, B.Tech"
+                  placeholderTextColor={Colors.textLight}
+                  value={editForm.highestQualification}
+                  onChangeText={(val) => setEditForm(p => ({ ...p, highestQualification: val }))}
+                />
+              </View>
+
+              {/* Active/Inactive Toggle */}
+              <View style={styles.field}>
+                <Text style={styles.label}>STATUS</Text>
+                <View style={styles.toggleRow}>
+                  <Pressable
+                    style={[styles.toggleBtn, editForm.isActive && styles.toggleBtnActive]}
+                    onPress={() => setEditForm(p => ({ ...p, isActive: true }))}
+                  >
+                    <Text style={[styles.toggleBtnText, editForm.isActive && styles.toggleBtnTextActive]}>Active</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.toggleBtn, !editForm.isActive && styles.toggleBtnInactive]}
+                    onPress={() => setEditForm(p => ({ ...p, isActive: false }))}
+                  >
+                    <Text style={[styles.toggleBtnText, !editForm.isActive && styles.toggleBtnTextInactive]}>Inactive</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Action buttons */}
+              <Pressable style={styles.submitBtn} onPress={handleEditEmployee} disabled={editSaving}>
+                {editSaving ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>Save Changes</Text>
+                )}
+              </Pressable>
+
+              <Pressable 
+                style={[styles.submitBtn, { backgroundColor: Colors.warning, marginTop: Spacing.sm }]} 
+                onPress={() => {
+                  setEditModalVisible(false);
+                  setTimeout(() => openLeaveModal(selectedEmployee), 300);
+                }}
+              >
+                <Ionicons name="calendar-outline" size={18} color={Colors.white} style={{ marginRight: 6 }} />
+                <Text style={styles.submitBtnText}>Mark Leave</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Mark Leave Modal ── */}
+      <Modal
+        visible={leaveModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setLeaveModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Mark Leave — {selectedEmployee?.fullName || selectedEmployee?.name}</Text>
+              <Pressable onPress={() => setLeaveModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <DropdownSelector
+                label="Leave Type"
+                placeholder="Choose type"
+                options={[
+                  { label: 'Casual Leave', value: 'casual' },
+                  { label: 'Sick Leave', value: 'sick' },
+                  { label: 'Paid Leave', value: 'paid' },
+                  { label: 'Unpaid Leave', value: 'unpaid' },
+                ]}
+                selectedValue={leaveForm.type}
+                onSelect={(val) => setLeaveForm(p => ({ ...p, type: val }))}
+              />
+
+              <DatePickerSelector
+                label="Start Date *"
+                value={leaveForm.startDate}
+                onChange={(val) => setLeaveForm(p => ({ ...p, startDate: val }))}
+                placeholder="Select start date"
+              />
+
+              <DatePickerSelector
+                label="End Date *"
+                value={leaveForm.endDate}
+                onChange={(val) => setLeaveForm(p => ({ ...p, endDate: val }))}
+                placeholder="Select end date"
+              />
+
+              <View style={styles.field}>
+                <Text style={styles.label}>REASON</Text>
+                <TextInput
+                  style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                  placeholder="Reason for leave..."
+                  placeholderTextColor={Colors.textLight}
+                  multiline
+                  value={leaveForm.reason}
+                  onChangeText={(val) => setLeaveForm(p => ({ ...p, reason: val }))}
+                />
+              </View>
+
+              <Pressable style={styles.submitBtn} onPress={handleMarkLeave} disabled={leaveSaving}>
+                {leaveSaving ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.submitBtnText}>Confirm Leave</Text>
+                )}
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -485,8 +794,15 @@ const styles = StyleSheet.create({
   label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5, marginBottom: Spacing.xs },
   input: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, height: 50, paddingHorizontal: Spacing.md, fontSize: FontSize.md, color: Colors.text },
   hint: { fontSize: 10, color: Colors.textLight, marginTop: 4 },
-  submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
+  submitBtn: { backgroundColor: Colors.primary, height: 52, borderRadius: BorderRadius.sm, justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl, flexDirection: 'row' },
   submitBtnText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: '700' },
+  toggleRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: 4 },
+  toggleBtn: { flex: 1, height: 44, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.surface },
+  toggleBtnActive: { backgroundColor: '#ECFDF5', borderColor: '#047857' },
+  toggleBtnInactive: { backgroundColor: '#FEF2F2', borderColor: '#B91C1C' },
+  toggleBtnText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },
+  toggleBtnTextActive: { color: '#047857', fontWeight: '700' },
+  toggleBtnTextInactive: { color: '#B91C1C', fontWeight: '700' },
   statsContainer: { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, backgroundColor: '#FFFFFF' },
   statCard: { flex: 1, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, padding: Spacing.md, alignItems: 'center' },
   statLabel: { fontSize: FontSize.xs - 1, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: 4 },

@@ -376,28 +376,28 @@ export default function LeadDetailScreen() {
           </Pressable>
         </View>
 
-        {isAdmin && (
-          <View style={[styles.actionsRow, { borderTopWidth: 0, paddingTop: 0, marginTop: -Spacing.sm }]}>
-            <Pressable 
-              style={[styles.actionBtn, { backgroundColor: Colors.primaryLight, borderColor: Colors.primary + '30' }]} 
-              onPress={() => {
-                setEditName(lead.name || '');
-                setEditPhone(lead.phone || '');
-                setEditEmail(lead.email || '');
-                setEditVehicleNo(lead.vehicleNo || lead.vehicle_number || '');
-                setEditGvw(lead.gvw || '');
-                setEditExistingAgent(lead.existingAgent || '');
-                setEditCity(lead.city || '');
-                setEditAddress(lead.address || '');
-                setEditStatus(lead.status || '');
-                setEditAssignedTo(lead.assignedTo || '');
-                setEditModalVisible(true);
-                fetchUsers();
-              }}
-            >
-              <Ionicons name="create-outline" size={18} color={Colors.primary} />
-              <Text style={[styles.actionLabel, { color: Colors.primary }]}>Edit Details</Text>
-            </Pressable>
+        <View style={[styles.actionsRow, { borderTopWidth: 0, paddingTop: 0, marginTop: -Spacing.sm }]}>
+          <Pressable 
+            style={[styles.actionBtn, { backgroundColor: Colors.primaryLight, borderColor: Colors.primary + '30' }]} 
+            onPress={() => {
+              setEditName(lead.name || '');
+              setEditPhone(lead.phone || '');
+              setEditEmail(lead.email || '');
+              setEditVehicleNo(lead.vehicleNo || lead.vehicle_number || '');
+              setEditGvw(lead.gvw || '');
+              setEditExistingAgent(lead.existingAgent || '');
+              setEditCity(lead.city || '');
+              setEditAddress(lead.address || '');
+              setEditStatus(lead.status || '');
+              setEditAssignedTo(lead.assignedTo || '');
+              setEditModalVisible(true);
+              if (isAdmin) fetchUsers();
+            }}
+          >
+            <Ionicons name="create-outline" size={18} color={Colors.primary} />
+            <Text style={[styles.actionLabel, { color: Colors.primary }]}>Edit Details</Text>
+          </Pressable>
+          {isAdmin && (
             <Pressable 
               style={[styles.actionBtn, { backgroundColor: Colors.error + '15', borderColor: Colors.error + '30' }]} 
               onPress={handleDeleteLead}
@@ -405,8 +405,8 @@ export default function LeadDetailScreen() {
               <Ionicons name="trash-outline" size={18} color={Colors.error} />
               <Text style={[styles.actionLabel, { color: Colors.error }]}>Delete Lead</Text>
             </Pressable>
-          </View>
-        )}
+          )}
+        </View>
 
         <View style={styles.infoCard}>
           <Text style={styles.sectionLabel}>VEHICLE & INSURANCE</Text>
@@ -684,17 +684,19 @@ export default function LeadDetailScreen() {
                 onSelect={setEditStatus}
               />
 
-              <DropdownSelector
-                label="Assign To"
-                placeholder="Choose assignee"
-                options={[
-                  { label: 'Unassigned', value: '' },
-                  ...usersList.map(u => ({ label: `${u.fullName || u.full_name || u.email} (${u.role?.name || 'Staff'})`, value: u.id }))
-                ]}
-                selectedValue={editAssignedTo}
-                onSelect={setEditAssignedTo}
-                loading={loadingUsers}
-              />
+              {isAdmin && (
+                <DropdownSelector
+                  label="Assign To"
+                  placeholder="Choose assignee"
+                  options={[
+                    { label: 'Unassigned', value: '' },
+                    ...usersList.map(u => ({ label: `${u.fullName || u.full_name || u.email} (${u.role?.name || 'Staff'})`, value: u.id }))
+                  ]}
+                  selectedValue={editAssignedTo}
+                  onSelect={setEditAssignedTo}
+                  loading={loadingUsers}
+                />
+              )}
 
               <Pressable style={styles.submitBtn} onPress={handleUpdateLead} disabled={updatingLead}>
                 {updatingLead ? (
